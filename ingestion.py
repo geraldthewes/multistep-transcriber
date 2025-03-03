@@ -8,6 +8,7 @@ from tqdm import tqdm
 from faster_whisper import WhisperModel
 from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor, pipeline
 from pyannote.audio import Pipeline
+from typing import List
 # import outlines  # For structured LLM responses
 
 from ollama import chat
@@ -23,6 +24,10 @@ class CorrectedText(BaseModel):
 class Speaker_Mapping(BaseModel):
     speaker_mapping: dict[str, str]
 
+
+# Approximate conversion factor (1 word ≈ 4 tokens)
+WORDS_TO_TOKENS_RATIO = 1.34
+
     
 class VideoTranscriber:
     def __init__(self):
@@ -31,7 +36,8 @@ class VideoTranscriber:
         self.whisper_model.logger.setLevel(logging.WARNING)
         self.diarization_pipeline = Pipeline.from_pretrained("pyannote/speaker-diarization",
                                                              use_auth_token=os.environ["HF_TOKEN"])
-        self.noun_extraction_model = "granite3.2:latest"  # Store the model name as a class attribute
+        self.noun_extraction_model = "mistral-small:latest"  # Store the model name as a class attribute
+        self.extract_max_tokens = 8192
         self.corrected_transcript_model = "granite3.2:latest" # need 128K token content length or more
         
     def initial_transcription(self, video_path: str) -> str:
@@ -44,17 +50,64 @@ class VideoTranscriber:
             print(f"Error in initial transcription: {e}")
             return ""
 
+
+    def split_into_chunks(self, text: str, max_tokens: int) -> List[str]:
+        words = text.split()
+        chunks = []
+        current_chunk = []
+        current_length = 0
+
+        for word in words:
+            # Estimate the token length of the current chunk with the new word
+            estimated_token_length = len(current_chunk) * WORDS_TO_TOKENS_RATIO + len(word)
+
+            if estimated_token_length > max_tokens and current_chunk:
+                chunks.append(' '.join(current_chunk))
+                current_chunk = [word]
+            else:
+                current_chunk.append(word)
+
+        # Append the last chunk
+        if current_chunk:
+            chunks.append(' '.join(current_chunk))
+
+        return chunks
+
+        
     def extract_nouns(self, transcript: str) -> list:
         """Extract proper nouns and technical terms from master document"""
         try:
-            # Define structured output format
-            structured_prompt =  f'Extract all proper nouns, people names, locations, technical terms, and important concepts from this text. Return as a JSON list. {transcript}'
+            # Split the transcript into chunks
+            chunks = self.split_into_chunks(transcript, self.extract_max_tokens)
             
-            # Using outlines with a local LLM (replace with your preferred model)
-            response = chat(model=self.noun_extraction_model,
-                            messages=[{'role':'user', 'content':structured_prompt}])
-                            #format=NounList.model_json_schema())
-            return response['message']['content']
+            # Define structured output format
+            structured_prompt =  f'''
+Extract all proper nouns, people names, organizations and locations from the document below. For persons, privilege the full name and avoid having phonetically equivalent variants. But most importantly capture all the proper nouns. Do not skip any. It's more important to be exhaustive that precise. Ensure thorough reading of the entire context to catch all mentions of people, organizations, or locations.
+
+Make sure you capture all reference to nounds including indirect ones such
+
+And for school committee, we have Sarah Carter, Larry Brayman, Ailey J., and Lena Patterson.
+
+Hello, my name is Sarah Carter. Hi. I'm Patrick Mayor. I'm Vanika Kumar and I'm running for Lexington Select Board
+
+Return as a JSON list of strings that looks likeusimng the same format as the example below
+
+["Jack Smith", "Boston", "High Scool"]
+
+The document follows:
+'''
+
+            all_nouns = set()  # Use a set to avoid duplicates
+            for chunk in tqdm(chunks, desc="Processing chunks"):
+                # Using outlines with a local LLM (replace with your preferred model)
+                response = chat(model=self.noun_extraction_model,
+                                messages=[{'role':'user', 'content':structured_prompt + chunk}],
+                                format=NounList.model_json_schema())
+                print(response.message.content)
+                extracted_nouns = NounList.model_validate_json(response.message.content)
+                print(extracted_nouns)
+                all_nouns.update(extracted_nouns.nouns)
+            return list(all_nouns)
         except Exception as e:
             print(f"Error extracting nouns: {e}")
             return []
@@ -142,11 +195,22 @@ class VideoTranscriber:
 
     def transcribe_video(self, video_path: str) -> str:
         """Main function to run the complete transcription process"""
+
+        
         print('Step 1: Initial transcription')
-        raw_transcript = self.initial_transcription(video_path)
-        if not raw_transcript:
-            return "Transcription failed"
-        print(raw_transcript)
+        raw_transcript_file = os.path.splitext(video_path)[0] + '.raw_transcript'
+        if os.path.exists(raw_transcript_file):
+            print(f"Loading cached raw transcript from {raw_transcript_file}")
+            with open(raw_transcript_file, 'r', encoding='utf-8') as file:
+                raw_transcript = file.read()
+        else:
+            raw_transcript = self.initial_transcription(video_path)
+            if not raw_transcript:
+                return "Transcription failed"
+            # Save the generated raw transcript to a file
+            with open(raw_transcript_file, 'w', encoding='utf-8') as file:
+                file.write(raw_transcript)            
+            print(raw_transcript)
 
         print('Step 2: Noun extraction')
         noun_list = self.extract_nouns(raw_transcript)
@@ -155,15 +219,15 @@ class VideoTranscriber:
 
         print('Step 3: Transcript correction')
         corrected_transcript = self.correct_transcript(raw_transcript, noun_list)
-        print(corrected_transcript)
+        #print(corrected_transcript)
         
         print('Step 4: Speaker identification')
         speaker_mapping = self.identify_speakers(video_path, corrected_transcript)
-        print(speaker_mapping)
+        #print(speaker_mapping)
         
         print('Step 5: Final formatting')
         final_transcript = self.format_transcript(corrected_transcript, speaker_mapping)
-        print(final_transcript)
+        #print(final_transcript)
         
         return final_transcript
 
