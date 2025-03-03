@@ -3,19 +3,37 @@ import sys
 import json
 import torch
 import logging
+import argparse
 from tqdm import tqdm
 from faster_whisper import WhisperModel
 from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor, pipeline
 from pyannote.audio import Pipeline
-import outlines  # For structured LLM responses
+# import outlines  # For structured LLM responses
 
+from ollama import chat
+from pydantic import BaseModel
+
+
+class NounList(BaseModel):
+    nouns: list[str]
+
+class CorrectedText(BaseModel):
+    corrected_text: str
+
+class Speaker_Mapping(BaseModel):
+    speaker_mapping: dict[str, str]
+
+    
 class VideoTranscriber:
     def __init__(self):
         # Initialize models
-        self.whisper_model = WhisperModel("./faster-distil-whisper-large-v3")
+        self.whisper_model = WhisperModel("/mnt/data3/AI/software/VideoRAG/faster-distil-whisper-large-v3")
         self.whisper_model.logger.setLevel(logging.WARNING)
-        self.diarization_pipeline = Pipeline.from_pretrained("pyannote/speaker-diarization")
-
+        self.diarization_pipeline = Pipeline.from_pretrained("pyannote/speaker-diarization",
+                                                             use_auth_token=os.environ["HF_TOKEN"])
+        self.noun_extraction_model = "granite3.2:latest"  # Store the model name as a class attribute
+        self.corrected_transcript_model = "granite3.2:latest" # need 128K token content length or more
+        
     def initial_transcription(self, video_path: str) -> str:
         """Perform initial transcription using Whisper"""
         try:
@@ -26,22 +44,17 @@ class VideoTranscriber:
             print(f"Error in initial transcription: {e}")
             return ""
 
-    def extract_nouns(self, master_document_path: str) -> list:
+    def extract_nouns(self, transcript: str) -> list:
         """Extract proper nouns and technical terms from master document"""
         try:
-            with open(master_document_path, 'r') as f:
-                text = f.read()
-
             # Define structured output format
-            structured_prompt = outlines.prompt(
-                "Extract all proper nouns, technical terms, and important concepts from this text. "
-                "Return as a JSON list.",
-                output_format={"terms": list[str]}
-            )
+            structured_prompt =  f'Extract all proper nouns, people names, locations, technical terms, and important concepts from this text. Return as a JSON list. {transcript}'
             
             # Using outlines with a local LLM (replace with your preferred model)
-            response = outlines.generate(text, model="your-local-llm-model", prompt=structured_prompt)
-            return response["terms"]
+            response = chat(model=self.noun_extraction_model,
+                            messages=[{'role':'user', 'content':structured_prompt}])
+                            #format=NounList.model_json_schema())
+            return response['message']['content']
         except Exception as e:
             print(f"Error extracting nouns: {e}")
             return []
@@ -50,24 +63,32 @@ class VideoTranscriber:
         """Correct transcript using LLM and noun list"""
         try:
             # Using outlines for structured correction
-            correction_prompt = outlines.prompt(
-                "Correct this transcript, paying special attention to the proper nouns and terms "
-                "in the provided list. Ensure proper punctuation and formatting.",
-                output_format={"corrected_text": str}
-            )
+            correction_prompt = """You are a skilled editor and in charge of editorial content and you will be given a transcript from an interview, video essay, podcast or speech and a set of nouns. Your job is to keep as much as possible from the original transcript and only make fixes for replacing nouns with the correct variant, for clarity or abbreviation, grammar, punctuation and format according to this general set of rules:
+
+- Beware that this transcript is auto generated from speech so it can contain wrong or misspelled words, make your best effort to fix those words, never change the overall structure of the transcript, just focus con correcting specific words, fixing punctuation and formatting.
+
+- Before doing your task be sure to read enough of the transcript so you can infer the overall context and make better judgements for the needed fixes.
+
+- The same noun may be transcripted using different variations, your job is to pick the most correct one and use it consistently. 
+
+- The most important rule is to keep the original transcript mostly unaltered word for word and especially in tone. You are only allowed to make small editorial changes for punctuation, grammar, formatting and clarity.
+
+- You are allowed to modify the text only if in said context the subject correct themselves, so your job is to clean up the phrase for clarity and eliminate repetition.
+
+- If by any chance you have to replace a word, please ~~strike trough~~ the original word and add a memo emoji 📝 next to your predicted correction.
+
+- Use markdown for your output.""",
             
             # Combine inputs
             input_data = {
                 "transcript": raw_transcript,
                 "nouns": noun_list
             }
-            
-            response = outlines.generate(
-                input_data,
-                model="your-local-llm-model",
-                prompt=correction_prompt
-            )
-            return response["corrected_text"]
+
+            response = chat(model=self.correct_transcript,
+                            messages=input_data,
+                            format=CorrectedText.model_json_schema())
+            return response['message']['content']
         except Exception as e:
             print(f"Error correcting transcript: {e}")
             return raw_transcript
@@ -86,22 +107,19 @@ class VideoTranscriber:
                     "end": turn.end,
                     "speaker": speaker
                 })
-            
+            print(speaker_segments)    
+                
             # Map speakers to names using context (simplified example)
-            mapping_prompt = outlines.prompt(
-                "Based on this transcript and speaker segments, map speaker labels to actual names.",
-                output_format={"speaker_mapping": dict[str, str]}
-            )
-            
+            mapping_prompt = "Based on this transcript and speaker segments, map speaker labels to actual names."
             input_data = {
                 "transcript": transcript,
                 "segments": speaker_segments
             }
             
-            response = outlines.generate(
-                input_data,
+            response = chat(
+                messages=input_data,
                 model="your-local-llm-model",
-                prompt=mapping_prompt
+                format=Speaker_Mapping.model_json_schema()
             )
             return response["speaker_mapping"]
         except Exception as e:
@@ -122,46 +140,58 @@ class VideoTranscriber:
             print(f"Error formatting transcript: {e}")
             return transcript
 
-    def transcribe_video(self, video_path: str, master_doc_path: str) -> str:
+    def transcribe_video(self, video_path: str) -> str:
         """Main function to run the complete transcription process"""
-        # Step 1: Initial transcription
+        print('Step 1: Initial transcription')
         raw_transcript = self.initial_transcription(video_path)
         if not raw_transcript:
             return "Transcription failed"
+        print(raw_transcript)
 
-        # Step 2: Noun extraction
-        noun_list = self.extract_nouns(master_doc_path)
+        print('Step 2: Noun extraction')
+        noun_list = self.extract_nouns(raw_transcript)
+        print(noun_list)
         
-        # Step 3: Transcript correction
+
+        print('Step 3: Transcript correction')
         corrected_transcript = self.correct_transcript(raw_transcript, noun_list)
+        print(corrected_transcript)
         
-        # Step 4: Speaker identification
-        speaker_mapping = self.identity_speakers(video_path, corrected_transcript)
+        print('Step 4: Speaker identification')
+        speaker_mapping = self.identify_speakers(video_path, corrected_transcript)
+        print(speaker_mapping)
         
-        # Step 5: Final formatting
+        print('Step 5: Final formatting')
         final_transcript = self.format_transcript(corrected_transcript, speaker_mapping)
+        print(final_transcript)
         
         return final_transcript
 
+
+
 def main():
-    if len(sys.argv) != 3:
-        print("Usage: python script.py <video_path> <master_document_path>")
-        sys.exit(1)
+    parser = argparse.ArgumentParser(description="Transcribe a video using a master document.")
     
-    video_path = sys.argv[1]
-    master_doc_path = sys.argv[2]
+    # Add arguments
+    parser.add_argument("video_path", type=str, help="Path to the video file")
     
-    if not os.path.exists(video_path) or not os.path.exists(master_doc_path):
+    # Parse arguments
+    args = parser.parse_args()
+    
+    video_path = args.video_path
+    
+    if not os.path.exists(video_path):
         print("Error: File(s) not found")
         sys.exit(1)
     
     transcriber = VideoTranscriber()
-    result = transcriber.transcribe_video(video_path, master_doc_path)
+    result = transcriber.transcribe_video(video_path)
     
     # Save output
     with open("transcription.md", "w") as f:
         f.write(result)
     print("Transcription complete. Output saved to transcription.md")
 
+    
 if __name__ == "__main__":
     main()
