@@ -9,6 +9,9 @@ from faster_whisper import WhisperModel
 from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor, pipeline
 from pyannote.audio import Pipeline
 from typing import List
+from gliner import GLiNER
+import re
+
 # import outlines  # For structured LLM responses
 
 from ollama import chat
@@ -28,16 +31,19 @@ class Speaker_Mapping(BaseModel):
 # Approximate conversion factor (1 word ≈ 4 tokens)
 WORDS_TO_TOKENS_RATIO = 1.34
 
+
+
     
 class VideoTranscriber:
     def __init__(self):
         # Initialize models
         self.whisper_model = WhisperModel("/mnt/data3/AI/software/VideoRAG/faster-distil-whisper-large-v3")
         self.whisper_model.logger.setLevel(logging.WARNING)
-        self.diarization_pipeline = Pipeline.from_pretrained("pyannote/speaker-diarization",
-                                                             use_auth_token=os.environ["HF_TOKEN"])
-        self.noun_extraction_model = "mistral-small:latest"  # Store the model name as a class attribute
-        self.extract_max_tokens = 8192
+        self.diarization_pipeline = Pipeline.from_pretrained(
+            "pyannote/speaker-diarization",
+            use_auth_token=os.environ["HF_TOKEN"])
+        # Initialize GLiNER with the base model
+        self.entity_model = GLiNER.from_pretrained("urchade/gliner_medium-v2.1")
         self.corrected_transcript_model = "granite3.2:latest" # need 128K token content length or more
         
     def initial_transcription(self, video_path: str) -> str:
@@ -50,64 +56,80 @@ class VideoTranscriber:
             print(f"Error in initial transcription: {e}")
             return ""
 
+    ''' Break transcript into sentences for noun extration '''
+    def split_into_sentences(self, text):
+        # Regular expression pattern to match sentence-ending punctuation followed by a space or end of string
+        sentence_endings = re.compile(r'(?<=[.!?]) +|(?<=[.!?])$')
 
-    def split_into_chunks(self, text: str, max_tokens: int) -> List[str]:
-        words = text.split()
-        chunks = []
-        current_chunk = []
-        current_length = 0
+        # Split the text into sentences using the compiled pattern
+        sentences = sentence_endings.split(text)
 
-        for word in words:
-            # Estimate the token length of the current chunk with the new word
-            estimated_token_length = len(current_chunk) * WORDS_TO_TOKENS_RATIO + len(word)
+        # Strip any leading/trailing whitespace from each sentence
+        sentences = [sentence.strip() for sentence in sentences if sentence.strip()]
 
-            if estimated_token_length > max_tokens and current_chunk:
-                chunks.append(' '.join(current_chunk))
-                current_chunk = [word]
-            else:
-                current_chunk.append(word)
+        return sentences
 
-        # Append the last chunk
-        if current_chunk:
-            chunks.append(' '.join(current_chunk))
+    ''' Extract what we ned from results '''
+    def group_by_label(self, data):
+        # Initialize an empty dictionary to hold the results
+        result = {}
 
-        return chunks
+        # Iterate through each item in the list
+        for sentence in data:
+            for entry in sentence:
+                # Check if the entry is a dictionary (to skip empty lists)
+                if isinstance(entry, dict):
+                    label = entry['label']
 
-        
+                    # Create a new dictionary with only 'text' and 'score'
+                    text_score_dict = {'text': entry['text'], 'score': entry['score']}
+
+                    # Add to the result dictionary under the appropriate label
+                    if label not in result:
+                        result[label] = []
+                    result[label].append(text_score_dict)
+
+        return result
+
+    ''' Merge entities, pick highest prob'''
+    def merge_similar_texts(self, data):
+        # Initialize an empty dictionary to hold the results
+        result = {}
+
+        # Iterate through each label in the input data
+        for label, entries in data.items():
+            # Use a dictionary to store unique texts with their maximum scores
+            unique_entries = {}
+
+            # Process each entry in the list of entries for the current label
+            for entry in entries:
+                text = entry['text']
+                score = entry['score']
+
+                # remove generic entities
+                if text in ['he','she', 'I', 'me', 'her','him','they', 'we']:
+                    continue
+                # If the text is already in the unique_entries, update the score if it's higher
+                if text in unique_entries:
+                    unique_entries[text] = max(unique_entries[text], score)
+                else:
+                    unique_entries[text] = score
+
+            #print(unique_entries)
+            # Convert the unique_entries dictionary back to a list of dictionaries
+            result[label] = [{'text': text, 'score': score} for text, score in unique_entries.items()]   
+        return result
+    
     def extract_nouns(self, transcript: str) -> list:
         """Extract proper nouns and technical terms from master document"""
         try:
-            # Split the transcript into chunks
-            chunks = self.split_into_chunks(transcript, self.extract_max_tokens)
-            
-            # Define structured output format
-            structured_prompt =  f'''
-Extract all proper nouns, people names, organizations and locations from the document below. For persons, privilege the full name and avoid having phonetically equivalent variants. But most importantly capture all the proper nouns. Do not skip any. It's more important to be exhaustive that precise. Ensure thorough reading of the entire context to catch all mentions of people, organizations, or locations.
-
-Make sure you capture all reference to nounds including indirect ones such
-
-And for school committee, we have Sarah Carter, Larry Brayman, Ailey J., and Lena Patterson.
-
-Hello, my name is Sarah Carter. Hi. I'm Patrick Mayor. I'm Vanika Kumar and I'm running for Lexington Select Board
-
-Return as a JSON list of strings that looks likeusimng the same format as the example below
-
-["Jack Smith", "Boston", "High Scool"]
-
-The document follows:
-'''
-
-            all_nouns = set()  # Use a set to avoid duplicates
-            for chunk in tqdm(chunks, desc="Processing chunks"):
-                # Using outlines with a local LLM (replace with your preferred model)
-                response = chat(model=self.noun_extraction_model,
-                                messages=[{'role':'user', 'content':structured_prompt + chunk}],
-                                format=NounList.model_json_schema())
-                print(response.message.content)
-                extracted_nouns = NounList.model_validate_json(response.message.content)
-                print(extracted_nouns)
-                all_nouns.update(extracted_nouns.nouns)
-            return list(all_nouns)
+            transcript_sentences = self.split_into_sentences(transcript)
+            labels = ["Person", "Organizations", "Date", "Positions", "Locations"]
+            # Perform entity prediction
+            entities = self.entity_model.batch_predict_entities(transcript_sentences, labels, threshold=0.5)
+            entities_by_label = self.group_by_label(entities)
+            entities_merged = self.merge_similar_texts(entities_by_label)
+            return entities_merged
         except Exception as e:
             print(f"Error extracting nouns: {e}")
             return []
