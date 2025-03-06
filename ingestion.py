@@ -31,6 +31,43 @@ class Speaker_Mapping(BaseModel):
 # Approximate conversion factor (1 word ≈ 4 tokens)
 WORDS_TO_TOKENS_RATIO = 1.34
 
+def cached_file(file_ext):
+    """
+    A decorator that caches the output of a function to a file.
+    
+    Args:
+        file_ext (str): The file extension used for the cache file.
+        
+    Returns:
+        function: A decorator that applies the caching behavior.
+    """
+    def decorator(func):
+        def wrapper(self, video_path, *args, **kwargs):
+            # Construct the cache file name
+            cache_file = os.path.splitext(video_path)[0] + file_ext
+            
+            # Try to load from cache if it exists
+            if os.path.exists(cache_file):
+                print(f"Loading cached data from {cache_file}")
+                with open(cache_file, 'r', encoding='utf-8') as file:
+                    return file.read()
+            
+            # Compute the result since cache doesn't exist
+            result = func(self, video_path, *args, **kwargs)
+            
+            if not result:  # Check for failure
+                print(f"Error in computing {func.__name__}")
+                return f"{func.__name__} failed"
+            
+            # Save to cache
+            with open(cache_file, 'w', encoding='utf-8') as file:
+                file.write(result)
+                
+            return result
+        
+        return wrapper
+    
+    return decorator
 
 
     
@@ -42,10 +79,12 @@ class VideoTranscriber:
         self.diarization_pipeline = Pipeline.from_pretrained(
             "pyannote/speaker-diarization",
             use_auth_token=os.environ["HF_TOKEN"])
+        self.diarization_pipeline.to(torch.device("cuda"))
         # Initialize GLiNER with the base model
         self.entity_model = GLiNER.from_pretrained("urchade/gliner_medium-v2.1")
         self.corrected_transcript_model = "granite3.2:latest" # need 128K token content length or more
-        
+
+    @cached_file('.raw_transcript')
     def initial_transcription(self, video_path: str) -> str:
         """Perform initial transcription using Whisper"""
         try:
@@ -128,9 +167,11 @@ class VideoTranscriber:
             result[label] = [{'text': text, 'score': score} for text, score in unique_entries.items()]
 
         # Now flatten the result
-        return self.flatten_texts(result)
-            
-    def extract_nouns(self, transcript: str) -> list:
+        return ','.join(self.flatten_texts(result))
+
+
+    @cached_file('.nouns')
+    def extract_nouns(self, video_path: str, transcript: str) -> list:
         """Extract proper nouns and technical terms from master document"""
         try:
             transcript_sentences = self.split_into_sentences(transcript)
@@ -144,10 +185,10 @@ class VideoTranscriber:
             print(f"Error extracting nouns: {e}")
             return []
 
-    def correct_transcript(self, raw_transcript: str, noun_list: list) -> str:
+    @cached_file('.correct_transcript')        
+    def correct_transcript(self, video_path: str, raw_transcript: str, nouns: str) -> str:
         """Correct transcript using LLM and noun list"""
         try:
-            nouns = ','.join(noun_list)
             # Using outlines for structured correction
             correction_prompt = """You are a skilled editor and in charge of editorial content and you will be given a transcript from an interview, video essay, podcast or speech and a set of nouns. Your job is to keep as much as possible from the original transcript and only make fixes for replacing nouns with the correct variant, for clarity or abbreviation, grammar, punctuation and format according to this general set of rules:
 
@@ -234,27 +275,14 @@ Below is the trasncript to correct:
 
         
         print('Step 1: Initial transcription')
-        raw_transcript_file = os.path.splitext(video_path)[0] + '.raw_transcript'
-        if os.path.exists(raw_transcript_file):
-            print(f"Loading cached raw transcript from {raw_transcript_file}")
-            with open(raw_transcript_file, 'r', encoding='utf-8') as file:
-                raw_transcript = file.read()
-        else:
-            raw_transcript = self.initial_transcription(video_path)
-            if not raw_transcript:
-                return "Transcription failed"
-            # Save the generated raw transcript to a file
-            with open(raw_transcript_file, 'w', encoding='utf-8') as file:
-                file.write(raw_transcript)            
-            print(raw_transcript)
+        raw_transcript = self.initial_transcription(video_path)
 
         print('Step 2: Noun extraction')
-        noun_list = self.extract_nouns(raw_transcript)
+        noun_list = self.extract_nouns(video_path, raw_transcript)
         print(noun_list)
         
-
         print('Step 3: Transcript correction')
-        corrected_transcript = self.correct_transcript(raw_transcript, noun_list)
+        corrected_transcript = self.correct_transcript(video_path, raw_transcript, noun_list)
         print(corrected_transcript)
         
         print('Step 4: Speaker identification')
