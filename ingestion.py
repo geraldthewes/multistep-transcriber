@@ -91,6 +91,14 @@ class VideoTranscriber:
 
         return result
 
+    def flatten_texts(self, input_dict):
+        ''' Just return the nouns '''
+        texts = []
+        for label in input_dict:
+            for item in input_dict[label]:
+                texts.append(item['text'])
+        return texts
+
     ''' Merge entities, pick highest prob'''
     def merge_similar_texts(self, data):
         # Initialize an empty dictionary to hold the results
@@ -107,7 +115,7 @@ class VideoTranscriber:
                 score = entry['score']
 
                 # remove generic entities
-                if text in ['he','she', 'I', 'me', 'her','him','they', 'we']:
+                if text.lower() in ['he','she', 'I', 'me', 'her','him','they', 'we', 'us', 'one']:
                     continue
                 # If the text is already in the unique_entries, update the score if it's higher
                 if text in unique_entries:
@@ -117,9 +125,11 @@ class VideoTranscriber:
 
             #print(unique_entries)
             # Convert the unique_entries dictionary back to a list of dictionaries
-            result[label] = [{'text': text, 'score': score} for text, score in unique_entries.items()]   
-        return result
-    
+            result[label] = [{'text': text, 'score': score} for text, score in unique_entries.items()]
+
+        # Now flatten the result
+        return self.flatten_texts(result)
+            
     def extract_nouns(self, transcript: str) -> list:
         """Extract proper nouns and technical terms from master document"""
         try:
@@ -137,6 +147,7 @@ class VideoTranscriber:
     def correct_transcript(self, raw_transcript: str, noun_list: list) -> str:
         """Correct transcript using LLM and noun list"""
         try:
+            nouns = ','.join(noun_list)
             # Using outlines for structured correction
             correction_prompt = """You are a skilled editor and in charge of editorial content and you will be given a transcript from an interview, video essay, podcast or speech and a set of nouns. Your job is to keep as much as possible from the original transcript and only make fixes for replacing nouns with the correct variant, for clarity or abbreviation, grammar, punctuation and format according to this general set of rules:
 
@@ -152,17 +163,20 @@ class VideoTranscriber:
 
 - If by any chance you have to replace a word, please ~~strike trough~~ the original word and add a memo emoji 📝 next to your predicted correction.
 
-- Use markdown for your output.""",
+- Use markdown for your output.
+
+Use the following Nouns: {nouns}
+
+Below is the trasncript to correct:
+
+{raw_transcript}
             
-            # Combine inputs
-            input_data = {
-                "transcript": raw_transcript,
-                "nouns": noun_list
-            }
+"""
+            
+
 
             response = chat(model=self.correct_transcript,
-                            messages=input_data,
-                            format=CorrectedText.model_json_schema())
+                            messages=correction_prompt)
             return response['message']['content']
         except Exception as e:
             print(f"Error correcting transcript: {e}")
@@ -241,7 +255,7 @@ class VideoTranscriber:
 
         print('Step 3: Transcript correction')
         corrected_transcript = self.correct_transcript(raw_transcript, noun_list)
-        #print(corrected_transcript)
+        print(corrected_transcript)
         
         print('Step 4: Speaker identification')
         speaker_mapping = self.identify_speakers(video_path, corrected_transcript)
