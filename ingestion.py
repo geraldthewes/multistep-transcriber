@@ -11,6 +11,7 @@ from pyannote.audio import Pipeline
 from typing import List
 from gliner import GLiNER
 import re
+import traceback
 
 # import outlines  # For structured LLM responses
 
@@ -44,7 +45,10 @@ def cached_file(file_ext):
     def decorator(func):
         def wrapper(self, video_path, *args, **kwargs):
             # Construct the cache file name
-            cache_file = os.path.splitext(video_path)[0] + file_ext
+            base_name, _ = os.path.splitext(video_path)
+            cache_dir = base_name + '.d'
+            os.makedirs(cache_dir, exist_ok=True)
+            cache_file = os.path.join(cache_dir, 'cache' + file_ext)            
             
             # Try to load from cache if it exists
             if os.path.exists(cache_file):
@@ -80,7 +84,10 @@ def cached_file_object(file_ext):
     def decorator(func):
         def wrapper(self, video_path, *args, **kwargs):
             # Construct the cache file name
-            cache_file = os.path.splitext(video_path)[0] + file_ext
+            base_name, _ = os.path.splitext(video_path)
+            cache_dir = base_name + '.d'
+            os.makedirs(cache_dir, exist_ok=True)
+            cache_file = os.path.join(cache_dir, 'cache' + file_ext)                                           
             
             # Try to load from cache if it exists
             if os.path.exists(cache_file):
@@ -115,7 +122,7 @@ class VideoTranscriber:
         self.entity_model = GLiNER.from_pretrained("urchade/gliner_medium-v2.1")
         self.corrected_transcript_model = "granite3.2:latest" # need 128K token content length or more
 
-    @cached_file('.raw_transcript')
+    @cached_file_object('.raw_transcript')
     def initial_transcription(self, video_path: str) -> str:
         """Perform initial transcription using Whisper"""
         try:
@@ -130,7 +137,11 @@ class VideoTranscriber:
                     # If it's the first segment or the text has changed, add the previous range to output_lines
                     if current_text is not None:
                         formatted_line = f"[{current_start:.2f}s -> {segment.end:.2f}s]  {current_text}"
-                        output_lines.append(formatted_line)
+                        output_lines.append({
+                            "start": current_start,
+                            "end": segment.end,
+                            "transcript": current_text
+                            })
 
                     # Start a new range
                     current_start = segment.start
@@ -142,31 +153,15 @@ class VideoTranscriber:
 
             # Add the last range to output_lines
             if current_text is not None:
-                formatted_line = f"[{current_start:.2f}s -> {segment.end:.2f}s]  {current_text}"
-                output_lines.append(formatted_line)
-
-                
-            raw_transcript = "\n".join(output_lines)            
-            return raw_transcript
+                output_lines.append({
+                    "start": current_start,
+                    "end": segment.end,
+                    "transcript": current_text
+                })
+            return output_lines
         except Exception as e:
             print(f"Error in initial transcription: {e}")
-            return ""
-
-    ''' Break transcript into sentences for noun extration '''
-    def split_into_sentences(self, text):
-        # Regular expression to match the timestamp in brackets at the start of each line
-        pattern = r'^\[\d+\.\d+s -> \d+\.\d+s\]\s*'        
-        # Split the text into lines using splitlines()
-        sentences = text.splitlines()
-        # Strip any leading/trailing whitespace from each sentence
-        filtered_sentences = []
-        for sentence in sentences:
-            stripped_sentence = sentence.strip()
-            if stripped_sentence:
-                # Use re.sub() to replace the matched pattern with an empty string
-                cleaned_sentence = re.sub(pattern, '', stripped_sentence)
-                filtered_sentences.append(cleaned_sentence)        
-        return filtered_sentences        
+            return None
 
     ''' Extract what we ned from results '''
     def group_by_label(self, data):
@@ -234,7 +229,7 @@ class VideoTranscriber:
     def extract_nouns(self, video_path: str, transcript: str) -> list:
         """Extract proper nouns and technical terms from master document"""
         try:
-            transcript_sentences = self.split_into_sentences(transcript)
+            transcript_sentences = [item['transcript'] for item in transcript]            
             labels = ["Person", "Organizations", "Date", "Positions", "Locations"]
             # Perform entity prediction
             entities = self.entity_model.batch_predict_entities(transcript_sentences, labels, threshold=0.5)
@@ -243,7 +238,8 @@ class VideoTranscriber:
             return entities_merged
         except Exception as e:
             print(f"Error extracting nouns: {e}")
-            return []
+            traceback.print_exc()            
+            return None
 
     @cached_file('.corrected_transcript')        
     def correct_transcript(self, video_path: str, raw_transcript: str, nouns: str) -> str:
@@ -268,7 +264,7 @@ class VideoTranscriber:
 
 Use the following Nouns: {nouns}
 
-Below is the trasncript to correct:
+Below is the transcript to correct:
 
 {raw_transcript}
             
@@ -281,7 +277,8 @@ Below is the trasncript to correct:
             return response['message']['content']
         except Exception as e:
             print(f"Error correcting transcript: {e}")
-            return raw_transcript
+            traceback.print_exc()            
+            return None
 
     @cached_file_object('.diarization')
     def identify_speakers(self, video_path: str, transcript: str) -> dict:
@@ -298,7 +295,6 @@ Below is the trasncript to correct:
                     "end": turn.end,
                     "speaker": speaker
                 })
-            print(speaker_segments)    
                 
             # Map speakers to names using context (simplified example)
             mapping_prompt = "Based on this transcript and speaker segments, map speaker labels to actual names."
