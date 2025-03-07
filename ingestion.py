@@ -69,7 +69,38 @@ def cached_file(file_ext):
     
     return decorator
 
-
+def cached_file_object(file_ext):
+    """
+    A decorator that caches the output of a function to a file.
+    Args:
+        file_ext (str): The file extension used for the cache file.
+    Returns:
+        function: A decorator that applies the caching behavior.
+    """
+    def decorator(func):
+        def wrapper(self, video_path, *args, **kwargs):
+            # Construct the cache file name
+            cache_file = os.path.splitext(video_path)[0] + file_ext
+            
+            # Try to load from cache if it exists
+            if os.path.exists(cache_file):
+                print(f"Loading cached data from {cache_file}")
+                with open(cache_file, 'r', encoding='utf-8') as file:
+                    return json.load(file)
+            
+            # Compute the result since cache doesn't exist
+            result = func(self, video_path, *args, **kwargs)
+            if not result:  # Check for failure
+                print(f"Error in computing {func.__name__}")
+                return f"{func.__name__} failed"
+            
+            # Save to cache
+            with open(cache_file, 'w', encoding='utf-8') as file:
+                json.dump(result, file, ensure_ascii=False, indent=4)
+            
+            return result
+        return wrapper
+    return decorator
     
 class VideoTranscriber:
     def __init__(self):
@@ -89,7 +120,33 @@ class VideoTranscriber:
         """Perform initial transcription using Whisper"""
         try:
             segments, info = self.whisper_model.transcribe(video_path)
-            raw_transcript = " ".join(segment.text for segment in segments)
+            output_lines = []
+            current_start = None
+            curr_end = None
+            current_text = None
+
+            for segment in segments:
+                if current_text is None or segment.text != current_text:
+                    # If it's the first segment or the text has changed, add the previous range to output_lines
+                    if current_text is not None:
+                        formatted_line = f"[{current_start:.2f}s -> {segment.end:.2f}s]  {current_text}"
+                        output_lines.append(formatted_line)
+
+                    # Start a new range
+                    current_start = segment.start
+                    current_end = segment.end                    
+                    current_text = segment.text
+                else:
+                    # If the text is the same, extend the end time of the current range
+                    current_end = segment.end                                    
+
+            # Add the last range to output_lines
+            if current_text is not None:
+                formatted_line = f"[{current_start:.2f}s -> {segment.end:.2f}s]  {current_text}"
+                output_lines.append(formatted_line)
+
+                
+            raw_transcript = "\n".join(output_lines)            
             return raw_transcript
         except Exception as e:
             print(f"Error in initial transcription: {e}")
@@ -97,16 +154,19 @@ class VideoTranscriber:
 
     ''' Break transcript into sentences for noun extration '''
     def split_into_sentences(self, text):
-        # Regular expression pattern to match sentence-ending punctuation followed by a space or end of string
-        sentence_endings = re.compile(r'(?<=[.!?]) +|(?<=[.!?])$')
-
-        # Split the text into sentences using the compiled pattern
-        sentences = sentence_endings.split(text)
-
+        # Regular expression to match the timestamp in brackets at the start of each line
+        pattern = r'^\[\d+\.\d+s -> \d+\.\d+s\]\s*'        
+        # Split the text into lines using splitlines()
+        sentences = text.splitlines()
         # Strip any leading/trailing whitespace from each sentence
-        sentences = [sentence.strip() for sentence in sentences if sentence.strip()]
-
-        return sentences
+        filtered_sentences = []
+        for sentence in sentences:
+            stripped_sentence = sentence.strip()
+            if stripped_sentence:
+                # Use re.sub() to replace the matched pattern with an empty string
+                cleaned_sentence = re.sub(pattern, '', stripped_sentence)
+                filtered_sentences.append(cleaned_sentence)        
+        return filtered_sentences        
 
     ''' Extract what we ned from results '''
     def group_by_label(self, data):
@@ -185,7 +245,7 @@ class VideoTranscriber:
             print(f"Error extracting nouns: {e}")
             return []
 
-    @cached_file('.correct_transcript')        
+    @cached_file('.corrected_transcript')        
     def correct_transcript(self, video_path: str, raw_transcript: str, nouns: str) -> str:
         """Correct transcript using LLM and noun list"""
         try:
@@ -223,6 +283,7 @@ Below is the trasncript to correct:
             print(f"Error correcting transcript: {e}")
             return raw_transcript
 
+    @cached_file_object('.diarization')
     def identify_speakers(self, video_path: str, transcript: str) -> dict:
         """Perform speaker diarization and mapping"""
         try:
