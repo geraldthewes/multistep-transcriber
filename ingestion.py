@@ -15,7 +15,7 @@ import traceback
 
 # import outlines  # For structured LLM responses
 
-from ollama import chat
+from ollama import chat, generate
 from pydantic import BaseModel
 
 
@@ -112,20 +112,20 @@ def cached_file_object(file_ext):
 class VideoTranscriber:
     def __init__(self):
         # Initialize models
-        self.whisper_model = WhisperModel("/mnt/data3/AI/software/VideoRAG/faster-distil-whisper-large-v3")
-        self.whisper_model.logger.setLevel(logging.WARNING)
-        self.diarization_pipeline = Pipeline.from_pretrained(
-            "pyannote/speaker-diarization",
-            use_auth_token=os.environ["HF_TOKEN"])
-        self.diarization_pipeline.to(torch.device("cuda"))
+        self.whisper_model = None
+        self.diarization_pipeline = None
         # Initialize GLiNER with the base model
-        self.entity_model = GLiNER.from_pretrained("urchade/gliner_medium-v2.1")
+        self.entity_model = None
         self.corrected_transcript_model = "granite3.2:latest" # need 128K token content length or more
 
     @cached_file_object('.raw_transcript')
     def initial_transcription(self, video_path: str) -> str:
         """Perform initial transcription using Whisper"""
         try:
+            if not self.whisper_model:
+                self.whisper_model = WhisperModel("/mnt/data3/AI/software/VideoRAG/faster-distil-whisper-large-v3")
+                self.whisper_model.logger.setLevel(logging.WARNING)
+
             segments, info = self.whisper_model.transcribe(video_path)
             output_lines = []
             current_start = None
@@ -229,6 +229,8 @@ class VideoTranscriber:
     def extract_nouns(self, video_path: str, transcript: str) -> list:
         """Extract proper nouns and technical terms from master document"""
         try:
+            if not self.entity_model:
+                self.entity_model = GLiNER.from_pretrained("urchade/gliner_medium-v2.1")
             transcript_sentences = [item['transcript'] for item in transcript]            
             labels = ["Person", "Organizations", "Date", "Positions", "Locations"]
             # Perform entity prediction
@@ -244,9 +246,14 @@ class VideoTranscriber:
     @cached_file('.corrected_transcript')        
     def correct_transcript(self, video_path: str, raw_transcript: str, nouns: str) -> str:
         """Correct transcript using LLM and noun list"""
+        
         try:
+            transcript = "\n".join([item['transcript'] for item in raw_transcript])
             # Using outlines for structured correction
-            correction_prompt = """You are a skilled editor and in charge of editorial content and you will be given a transcript from an interview, video essay, podcast or speech and a set of nouns. Your job is to keep as much as possible from the original transcript and only make fixes for replacing nouns with the correct variant, for clarity or abbreviation, grammar, punctuation and format according to this general set of rules:
+            system_prompt = """You are a skilled editor and in charge of editorial content and you will be given a transcript from an interview, video essay, podcast or speech and a set of nouns to correct"""
+
+
+            prompt= f"""Your job as an editor is to keep as much as possible from the original transcript and only make fixes for replacing nouns with the correct variant, for clarity or abbreviation, grammar, punctuation and format according to this general set of rules:
 
 - Beware that this transcript is auto generated from speech so it can contain wrong or misspelled words, make your best effort to fix those words, never change the overall structure of the transcript, just focus con correcting specific words, fixing punctuation and formatting.
 
@@ -258,23 +265,21 @@ class VideoTranscriber:
 
 - You are allowed to modify the text only if in said context the subject correct themselves, so your job is to clean up the phrase for clarity and eliminate repetition.
 
-- If by any chance you have to replace a word, please ~~strike trough~~ the original word and add a memo emoji 📝 next to your predicted correction.
-
-- Use markdown for your output.
-
 Use the following Nouns: {nouns}
 
-Below is the transcript to correct:
+The transcript you have to correct follows:
 
-{raw_transcript}
-            
+{transcript}
 """
             
+            print(prompt)
 
-
-            response = chat(model=self.correct_transcript,
-                            messages=correction_prompt)
-            return response['message']['content']
+            response = generate(
+                model=self.corrected_transcript_model,
+                system=system_prompt,
+                prompt=prompt,
+                stream=False)
+            return response['response']
         except Exception as e:
             print(f"Error correcting transcript: {e}")
             traceback.print_exc()            
@@ -284,6 +289,12 @@ Below is the transcript to correct:
     def identify_speakers(self, video_path: str, transcript: str) -> dict:
         """Perform speaker diarization and mapping"""
         try:
+            if not self.diarization_pipeline:
+                self.diarization_pipeline = Pipeline.from_pretrained(
+                    "pyannote/speaker-diarization",
+                    use_auth_token=os.environ["HF_TOKEN"])
+                self.diarization_pipeline.to(torch.device("cuda"))
+            
             # Perform diarization
             diarization = self.diarization_pipeline(video_path)
             
@@ -336,11 +347,12 @@ Below is the transcript to correct:
 
         print('Step 2: Noun extraction')
         noun_list = self.extract_nouns(video_path, raw_transcript)
-        print(noun_list)
+        # print(noun_list)
         
         print('Step 3: Transcript correction')
         corrected_transcript = self.correct_transcript(video_path, raw_transcript, noun_list)
         print(corrected_transcript)
+        sys.exit(0)
         
         print('Step 4: Speaker identification')
         speaker_mapping = self.identify_speakers(video_path, corrected_transcript)
@@ -368,8 +380,10 @@ def main():
     if not os.path.exists(video_path):
         print("Error: File(s) not found")
         sys.exit(1)
-    
+
+    print('Setup')
     transcriber = VideoTranscriber()
+    print(f'Transcribe {video_path}')
     result = transcriber.transcribe_video(video_path)
     
     # Save output
