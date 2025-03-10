@@ -7,6 +7,7 @@ import argparse
 from tqdm import tqdm
 from faster_whisper import WhisperModel
 from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor, pipeline
+from sentence_transformers import SentenceTransformer, util
 from pyannote.audio import Pipeline
 from typing import List
 from gliner import GLiNER
@@ -116,6 +117,7 @@ class VideoTranscriber:
         self.diarization_pipeline = None
         # Initialize GLiNER with the base model
         self.entity_model = None
+        self.noun_correction_model = None
         self.corrected_transcript_model = "granite3.2:latest" # need 128K token content length or more
 
     @cached_file_object('.raw_transcript')
@@ -243,43 +245,74 @@ class VideoTranscriber:
             traceback.print_exc()            
             return None
 
+
+
+    def standardize_nouns_ai(self, transcript, noun_list):
+        """
+        Standardizes nouns using AI-based phonetic similarity via embeddings, preserving line feeds.
+
+        Args:
+            transcript (str): Text with phonetic variations and original line breaks
+            noun_list (list): Standard noun spellings
+
+        Returns:
+            str: Standardized transcript with line breaks preserved
+        """
+        # Load the model
+        if not self.noun_correction_model:
+            noun_correction_model = SentenceTransformer('paraphrase-MiniLM-L6-v2')
+
+        # Compute embeddings for standard nouns
+        noun_embeddings = noun_correction_model.encode(noun_list, convert_to_tensor=True)
+
+        # Split transcript into lines, preserving line breaks
+        lines = transcript.splitlines()
+        standardized_lines = []
+
+        for line in lines:
+            if not line.strip():  # Preserve empty lines
+                standardized_lines.append(line)
+                continue
+
+            # Split each line into words
+            words = line.split()
+            standardized_words = []
+
+            for word in words:
+                word_lower = word.lower()
+                if word_lower in noun_list:  # Exact match
+                    standardized_words.append(word)
+                    continue
+
+                # Compute embedding for current word
+                word_embedding = noun_correction_model.encode(word_lower, convert_to_tensor=True)
+
+                # Calculate cosine similarity with all standard nouns
+                similarities = util.cos_sim(word_embedding, noun_embeddings)[0]
+                max_similarity, best_match_idx = similarities.max(), similarities.argmax()
+
+                # If similarity is high enough, replace with standard form
+                if max_similarity > 0.85:  # Threshold can be tuned
+                    standard_form = noun_list[best_match_idx]
+                    if word[0].isupper():
+                        standard_form = standard_form.capitalize()
+                    standardized_words.append(standard_form)
+                else:
+                    standardized_words.append(word)
+
+            # Reconstruct the line with original spacing between words
+            standardized_lines.append(' '.join(standardized_words))
+
+        # Join lines with original line breaks
+        return '\n'.join(standardized_lines)
+    
     @cached_file('.corrected_transcript')        
     def correct_transcript(self, video_path: str, raw_transcript: str, nouns: str) -> str:
         """Correct transcript using LLM and noun list"""
-        
         try:
+            nouns_list = nouns.split(',')
             transcript = "\n".join([item['transcript'] for item in raw_transcript])
-            # Using outlines for structured correction
-            system_prompt = """You are a skilled editor and in charge of editorial content and you will be given a transcript from an interview, video essay, podcast or speech and a set of nouns to correct"""
-
-
-            prompt= f"""Your job as an editor is to keep as much as possible from the original transcript and only make fixes for replacing nouns with the correct variant, for clarity or abbreviation, grammar, punctuation and format according to this general set of rules:
-
-- Beware that this transcript is auto generated from speech so it can contain wrong or misspelled words, make your best effort to fix those words, never change the overall structure of the transcript, just focus con correcting specific words, fixing punctuation and formatting.
-
-- Before doing your task be sure to read enough of the transcript so you can infer the overall context and make better judgements for the needed fixes.
-
-- The same noun may be transcripted using different variations, your job is to pick the most correct one and use it consistently. 
-
-- The most important rule is to keep the original transcript mostly unaltered word for word and especially in tone. You are only allowed to make small editorial changes for punctuation, grammar, formatting and clarity.
-
-- You are allowed to modify the text only if in said context the subject correct themselves, so your job is to clean up the phrase for clarity and eliminate repetition.
-
-Use the following Nouns: {nouns}
-
-The transcript you have to correct follows:
-
-{transcript}
-"""
-            
-            print(prompt)
-
-            response = generate(
-                model=self.corrected_transcript_model,
-                system=system_prompt,
-                prompt=prompt,
-                stream=False)
-            return response['response']
+            return self.standardize_nouns_ai(transcript, nouns_list)
         except Exception as e:
             print(f"Error correcting transcript: {e}")
             traceback.print_exc()            
