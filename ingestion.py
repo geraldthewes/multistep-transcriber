@@ -247,7 +247,7 @@ class VideoTranscriber:
 
 
 
-    def standardize_nouns_ai(self, transcript, noun_list):
+    def standardize_nouns_ai(self, transcript: list, noun_list: list):
         """
         Standardizes nouns using AI-based phonetic similarity via embeddings, preserving line feeds.
 
@@ -266,12 +266,15 @@ class VideoTranscriber:
         noun_embeddings = noun_correction_model.encode(noun_list, convert_to_tensor=True)
 
         # Split transcript into lines, preserving line breaks
-        lines = transcript.splitlines()
-        standardized_lines = []
+        output = []
 
-        for line in lines:
+        for row in transcript:
+            line = row['transcript']
             if not line.strip():  # Preserve empty lines
-                standardized_lines.append(line)
+                output.append({
+                    "start": row["start"],
+                    "end": row["end"],
+                    "transcript": line})
                 continue
 
             # Split each line into words
@@ -301,18 +304,19 @@ class VideoTranscriber:
                     standardized_words.append(word)
 
             # Reconstruct the line with original spacing between words
-            standardized_lines.append(' '.join(standardized_words))
+            output.append({
+                    "start": row["start"],
+                    "end": row["end"],
+                    "transcript": ' '.join(standardized_words)})
 
-        # Join lines with original line breaks
-        return '\n'.join(standardized_lines)
+        return output
     
-    @cached_file('.corrected_transcript')        
-    def correct_transcript(self, video_path: str, raw_transcript: str, nouns: str) -> str:
+    @cached_file_object('.corrected_transcript')        
+    def correct_transcript(self, video_path: str, raw_transcript: list, nouns: str) -> str:
         """Correct transcript using LLM and noun list"""
         try:
             nouns_list = nouns.split(',')
-            transcript = "\n".join([item['transcript'] for item in raw_transcript])
-            return self.standardize_nouns_ai(transcript, nouns_list)
+            return self.standardize_nouns_ai(raw_transcript, nouns_list)
         except Exception as e:
             print(f"Error correcting transcript: {e}")
             traceback.print_exc()            
