@@ -347,8 +347,9 @@ class VideoTranscriber:
         except Exception as e:
             print(f"Error in speaker identification: {e}")
             return {}
-
-    def merge_transcript_diarization(self, transcript, diarization):
+        
+    @cached_file_object('.merged')
+    def merge_transcript_diarization(self, video_path: str, transcript: list, diarization: list):
         # Create a new list to store merged results
         merged = []
 
@@ -476,13 +477,15 @@ class VideoTranscriber:
         speaker_mapping = self.identify_speakers(video_path, corrected_transcript)
         #print(speaker_mapping)
 
-        print('Step 5: Speaker mapping')
+        print('Step 5: Merge transcript and diarization')
+        merged_transcript = self.merge_transcript_diarization(video_path, corrected_transcript,  speaker_mapping )
+
         
-        #print('Step 5: Final formatting')
+        #print('Step 6: Final formatting')
         #final_transcript = self.format_transcript(corrected_transcript, speaker_mapping)
         #print(final_transcript)
         
-        return final_transcript
+        # return final_transcript
 
 
 
