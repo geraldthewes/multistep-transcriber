@@ -343,7 +343,13 @@ class VideoTranscriber:
                     "end": turn.end,
                     "speaker": speaker
                 })
-                
+            return speaker_segments
+        except Exception as e:
+            print(f"Error in speaker identification: {e}")
+            return {}
+
+    def map_speakers(self):
+        try:
             # Map speakers to names using context (simplified example)
             mapping_prompt = "Based on this transcript and speaker segments, map speaker labels to actual names."
             input_data = {
@@ -358,7 +364,7 @@ class VideoTranscriber:
             )
             return response["speaker_mapping"]
         except Exception as e:
-            print(f"Error in speaker identification: {e}")
+            print(f"Error in speaker mapping: {e}")
             return {}
 
     def format_transcript(self, transcript: str, speaker_mapping: dict) -> str:
@@ -389,7 +395,6 @@ class VideoTranscriber:
         print('Step 3: Transcript correction')
         corrected_transcript = self.correct_transcript(video_path, raw_transcript, noun_list)
         print(corrected_transcript)
-        sys.exit(0)
         
         print('Step 4: Speaker identification')
         speaker_mapping = self.identify_speakers(video_path, corrected_transcript)
