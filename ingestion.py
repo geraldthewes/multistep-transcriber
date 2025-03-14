@@ -348,6 +348,82 @@ class VideoTranscriber:
             print(f"Error in speaker identification: {e}")
             return {}
 
+    def merge_transcript_diarization(self, transcript, diarization):
+        # Create a new list to store merged results
+        merged = []
+
+        # Sort both arrays by start time just to be safe
+        transcript = sorted(transcript, key=lambda x: x["start"])
+        diarization = sorted(diarization, key=lambda x: x["start"])
+
+        # Keep track of current position in both arrays
+        t_idx = 0  # transcript index
+        d_idx = 0  # diarization index
+
+        # Handle case where one or both arrays are empty
+        if not transcript or not diarization:
+            return transcript if transcript else []
+
+        current_time = min(transcript[0]["start"], diarization[0]["start"])
+        max_time = max(
+            transcript[-1]["end"] if transcript else 0,
+            diarization[-1]["end"] if diarization else 0
+        )
+
+        while current_time < max_time and (t_idx < len(transcript) or d_idx < len(diarization)):
+            # Get current transcript and diarization segments if available
+            curr_trans = transcript[t_idx] if t_idx < len(transcript) else None
+            curr_diar = diarization[d_idx] if d_idx < len(diarization) else None
+
+            # Determine the next end time
+            next_end = float('inf')
+            if curr_trans:
+                next_end = min(next_end, curr_trans["end"])
+            if curr_diar:
+                next_end = min(next_end, curr_diar["end"])
+
+            # If no transcript in this segment, create a silent segment
+            if not curr_trans or (curr_diar and curr_diar["start"] < curr_trans["start"]):
+                if curr_diar:
+                    merged.append({
+                        "start": current_time,
+                        "end": min(next_end, curr_diar["end"]),
+                        "transcript": "[SILENCE]",
+                        "speaker": curr_diar["speaker"]
+                    })
+                else:
+                    merged.append({
+                        "start": current_time,
+                        "end": next_end,
+                        "transcript": "[SILENCE]",
+                        "speaker": "UNKNOWN"
+                    })
+            # If we have a transcript segment
+            else:
+                speaker = "UNKNOWN"
+                # Find overlapping diarization segment
+                if curr_diar and curr_diar["start"] <= curr_trans["end"] and curr_diar["end"] >= curr_trans["start"]:
+                    speaker = curr_diar["speaker"]
+
+                merged.append({
+                    "start": current_time,
+                    "end": next_end,
+                    "transcript": curr_trans["transcript"],
+                    "speaker": speaker
+                })
+
+            # Update indices and current_time
+            current_time = next_end
+
+            if curr_trans and next_end >= curr_trans["end"]:
+                t_idx += 1
+            if curr_diar and next_end >= curr_diar["end"]:
+                d_idx += 1
+
+        return merged
+
+
+        
     def map_speakers(self):
         try:
             # Map speakers to names using context (simplified example)
@@ -394,14 +470,16 @@ class VideoTranscriber:
         
         print('Step 3: Transcript correction')
         corrected_transcript = self.correct_transcript(video_path, raw_transcript, noun_list)
-        print(corrected_transcript)
+        # print(corrected_transcript)
         
         print('Step 4: Speaker identification')
         speaker_mapping = self.identify_speakers(video_path, corrected_transcript)
         #print(speaker_mapping)
+
+        print('Step 5: Speaker mapping')
         
-        print('Step 5: Final formatting')
-        final_transcript = self.format_transcript(corrected_transcript, speaker_mapping)
+        #print('Step 5: Final formatting')
+        #final_transcript = self.format_transcript(corrected_transcript, speaker_mapping)
         #print(final_transcript)
         
         return final_transcript
@@ -436,3 +514,24 @@ def main():
     
 if __name__ == "__main__":
     main()
+
+
+# Example usage with your sample data
+transcript = [
+    {"start": 0.0, "end": 242.0, "transcript": "Thank you you"},
+    {"start": 240.0, "end": 322.0, "transcript": "Thank you you"},
+    {"start": 320.0, "end": 570.0, "transcript": "Thank you you"}
+]
+
+diarization = [
+    {"start": 581.6784687500001, "end": 588.1584687500001, "speaker": "SPEAKER_15"},
+    {"start": 588.90096875, "end": 613.0322187500001, "speaker": "SPEAKER_15"},
+    {"start": 610.14659375, "end": 611.0747187500001, "speaker": "SPEAKER_14"}
+]
+
+result = merge_transcript_diarization(transcript, diarization)
+
+# Print results nicely
+import json
+print(json.dumps(result, indent=2))
+    
