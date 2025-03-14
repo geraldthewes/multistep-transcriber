@@ -138,10 +138,10 @@ class VideoTranscriber:
                 if current_text is None or segment.text != current_text:
                     # If it's the first segment or the text has changed, add the previous range to output_lines
                     if current_text is not None:
-                        formatted_line = f"[{current_start:.2f}s -> {segment.end:.2f}s]  {current_text}"
+                        # Emit previous transcript
                         output_lines.append({
                             "start": current_start,
-                            "end": segment.end,
+                            "end": current_end,
                             "transcript": current_text
                             })
 
@@ -157,7 +157,7 @@ class VideoTranscriber:
             if current_text is not None:
                 output_lines.append({
                     "start": current_start,
-                    "end": segment.end,
+                    "end": current_end,
                     "transcript": current_text
                 })
             return output_lines
@@ -423,7 +423,31 @@ class VideoTranscriber:
 
         return merged
 
+    @cached_file_object('.compressed')
+    def compress_transcript(self, video_path: str, entries: list):
+        if not entries:
+            return []
 
+        compressed = []
+        current = dict(entries[0])  # Create a copy of the first entry
+
+        for entry in entries[1:]:
+            # Check if current entry matches the previous one in transcript and speaker
+            if (entry['transcript'] == current['transcript'] and 
+                entry['speaker'] == current['speaker'] and 
+                entry['start'] == current['end']):  # Check if times are consecutive
+                # Update the end time to the current entry's end time
+                current['end'] = entry['end']
+            else:
+                # Add the completed entry to our result and start a new one
+                compressed.append(current)
+                current = dict(entry)  # Create a copy of the new entry
+
+        # Don't forget to add the last entry
+        compressed.append(current)
+
+        return compressed
+    
         
     def map_speakers(self):
         try:
@@ -479,7 +503,8 @@ class VideoTranscriber:
 
         print('Step 5: Merge transcript and diarization')
         merged_transcript = self.merge_transcript_diarization(video_path, corrected_transcript,  speaker_mapping )
-
+        print('Step 6: Compress merged transcript')
+        compressed_transcript = self.compress_transcript(video_path, merged_transcript)
         
         #print('Step 6: Final formatting')
         #final_transcript = self.format_transcript(corrected_transcript, speaker_mapping)
@@ -510,31 +535,12 @@ def main():
     result = transcriber.transcribe_video(video_path)
     
     # Save output
-    with open("transcription.md", "w") as f:
-        f.write(result)
-    print("Transcription complete. Output saved to transcription.md")
+    #with open("transcription.md", "w") as f:
+    #    f.write(result)
+    #print("Transcription complete. Output saved to transcription.md")
 
     
 if __name__ == "__main__":
     main()
 
 
-# Example usage with your sample data
-transcript = [
-    {"start": 0.0, "end": 242.0, "transcript": "Thank you you"},
-    {"start": 240.0, "end": 322.0, "transcript": "Thank you you"},
-    {"start": 320.0, "end": 570.0, "transcript": "Thank you you"}
-]
-
-diarization = [
-    {"start": 581.6784687500001, "end": 588.1584687500001, "speaker": "SPEAKER_15"},
-    {"start": 588.90096875, "end": 613.0322187500001, "speaker": "SPEAKER_15"},
-    {"start": 610.14659375, "end": 611.0747187500001, "speaker": "SPEAKER_14"}
-]
-
-result = merge_transcript_diarization(transcript, diarization)
-
-# Print results nicely
-import json
-print(json.dumps(result, indent=2))
-    
