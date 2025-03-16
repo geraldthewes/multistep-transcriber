@@ -490,7 +490,20 @@ Here is the list of nouns:
             
         except Exception as e:
              print(f"Error extracting people names: {e}")
-             return None            
+             return None
+         
+    @cached_file_object('.transcript_filtered')
+    def filter_transcripts(self, video_path: str, json_array, noun_list):
+        # Convert noun list to a set for faster lookup
+        noun_set = set(noun_list)
+
+        # Filter the array
+        filtered_array = [
+            obj for obj in json_array 
+            if any(noun in obj["transcript"] for noun in noun_set)
+        ]
+
+        return filtered_array
 
     def format_transcript(self, transcript: str, speaker_mapping: dict) -> str:
         """Format final transcript as Markdown"""
@@ -532,6 +545,10 @@ Here is the list of nouns:
 
         print('Step 7: Extract People Names')
         people_name = self.noun_filter(video_path, noun_list)
+
+
+        print('Step 8: Filter transcript by people')
+        people_name = self.filter_transcripts(video_path, compressed_transcript, people_name)
 
         
         #print('Step 6: Final formatting')
