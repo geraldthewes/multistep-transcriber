@@ -115,10 +115,12 @@ class VideoTranscriber:
         # Initialize models
         self.whisper_model = None
         self.diarization_pipeline = None
+        self.diarization_model = "pyannote/speaker-diarization-3.1"
         # Initialize GLiNER with the base model
         self.entity_model = None
         self.noun_correction_model = None
         self.corrected_transcript_model = "granite3.2:latest" # need 128K token content length or more
+        self.people_filter_model = "olmo2:13b-1124-instruct-q4_K_M"
 
     @cached_file_object('.raw_transcript')
     def initial_transcription(self, video_path: str) -> str:
@@ -328,7 +330,7 @@ class VideoTranscriber:
         try:
             if not self.diarization_pipeline:
                 self.diarization_pipeline = Pipeline.from_pretrained(
-                    "pyannote/speaker-diarization",
+                    self.diarization_model,
                     use_auth_token=os.environ["HF_TOKEN"])
                 self.diarization_pipeline.to(torch.device("cuda"))
             
@@ -467,6 +469,28 @@ class VideoTranscriber:
         except Exception as e:
             print(f"Error in speaker mapping: {e}")
             return {}
+        
+    @cached_file_object('.people')
+    def noun_filter(self, video_path: str, nouns: list):
+        """ Extract people names from list of nouns """
+        try:
+            prompt = f'''Your task is to take a list of entities/nouns that is comma separated and extract only the people names and ignore all other nouns. Return the list as a JSON array of people's names only.
+
+Here is the list of nouns:
+            {nouns}
+            '''
+            # print(NounList.model_json_schema())
+            response = generate(
+                 model=self.people_filter_model,
+                 prompt=prompt,
+                 stream=False,
+                 format=NounList.model_json_schema())
+            return NounList.model_validate_json(response.response).nouns
+            
+            
+        except Exception as e:
+             print(f"Error extracting people names: {e}")
+             return None            
 
     def format_transcript(self, transcript: str, speaker_mapping: dict) -> str:
         """Format final transcript as Markdown"""
@@ -505,6 +529,10 @@ class VideoTranscriber:
         merged_transcript = self.merge_transcript_diarization(video_path, corrected_transcript,  speaker_mapping )
         print('Step 6: Compress merged transcript')
         compressed_transcript = self.compress_transcript(video_path, merged_transcript)
+
+        print('Step 7: Extract People Names')
+        people_name = self.noun_filter(video_path, noun_list)
+
         
         #print('Step 6: Final formatting')
         #final_transcript = self.format_transcript(corrected_transcript, speaker_mapping)
