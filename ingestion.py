@@ -11,6 +11,7 @@ from sentence_transformers import SentenceTransformer, util
 from pyannote.audio import Pipeline
 from typing import List
 from gliner import GLiNER
+from setfit import SetFitModel
 import re
 import traceback
 
@@ -120,7 +121,7 @@ class VideoTranscriber:
         self.entity_model = None
         self.noun_correction_model = None
         self.corrected_transcript_model = "granite3.2:latest" # need 128K token content length or more
-        self.people_filter_model = "olmo2:13b-1124-instruct-q4_K_M"
+        self.people_filter_model = "deepseek-v2:latest"
 
     @cached_file_object('.raw_transcript')
     def initial_transcription(self, video_path: str) -> str:
@@ -496,6 +497,7 @@ Here is the list of nouns:
     def filter_transcripts(self, video_path: str, json_array, noun_list):
         # Convert noun list to a set for faster lookup
         noun_set = set(noun_list)
+        print(noun_set)
 
         # Filter the array
         filtered_array = [
@@ -505,6 +507,46 @@ Here is the list of nouns:
 
         return filtered_array
 
+    def find_introductions_llm(self, transcript):
+        """
+        Use an LLM to find sentences where a speaker introduces themselves.
+        It's OK, but still contains sentences like 'We could start with Joe Mary Engel in that order.'
+        that would cause issues.
+
+        Args:
+            transcript (str): The full text of the transcript.
+
+        Returns:
+            list: Sentences classified as introductions.
+        """
+        # Split transcript into sentences
+
+        # Load a zero-shot classification model from Hugging Face
+        classifier = pipeline("zero-shot-classification", model="facebook/bart-large-mnli")
+
+        # Define labels for classification
+        labels = ["introduction", "not_introduction"]
+
+        intro_sentences = []
+        sentences = [item['transcript'] for item in transcript]
+        for sentence in sentences:
+            # Classify the sentence
+            result = classifier(sentence, candidate_labels=labels)
+            if result['labels'][0] == "introduction" and result['scores'][0] > 0.8:  # Confidence threshold
+                intro_sentences.append(sentence.strip())
+
+        print(intro_sentences)
+        return intro_sentences
+
+    def find_introductions_setfit(self, video_path: str, transcript):
+        intro_sentences = []
+        imodel = SetFitModel.from_pretrained("setfit-bge-small-v1.5-sst2-8-shot-introduction")         
+        sentences = [item['transcript'] for item in transcript]
+        preds = imodel.predict(sentences)
+        print(preds)
+        return preds
+    
+    
     def format_transcript(self, transcript: str, speaker_mapping: dict) -> str:
         """Format final transcript as Markdown"""
         try:
@@ -550,7 +592,8 @@ Here is the list of nouns:
         print('Step 8: Filter transcript by people')
         people_name = self.filter_transcripts(video_path, compressed_transcript, people_name)
 
-        
+        self.find_introductions_llm(compressed_transcript)
+        self.find_introductions_setfit(video_path, compressed_transcript)        
         #print('Step 6: Final formatting')
         #final_transcript = self.format_transcript(corrected_transcript, speaker_mapping)
         #print(final_transcript)
