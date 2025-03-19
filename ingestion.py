@@ -538,13 +538,16 @@ Here is the list of nouns:
         print(intro_sentences)
         return intro_sentences
 
-    def find_introductions_setfit(self, video_path: str, transcript):
+    def find_introductions_setfit(self, video_path: str, transcripts):
         intro_sentences = []
         imodel = SetFitModel.from_pretrained("setfit-bge-small-v1.5-sst2-8-shot-introduction")         
-        sentences = [item['transcript'] for item in transcript]
-        preds = imodel.predict(sentences)
-        print(preds)
-        return preds
+        sentences = [item['transcript'] for item in transcripts]
+        labels = imodel.predict(sentences)
+        print(labels)
+        # Filter the transcripts where the corresponding label is 'introduction'
+        filtered_transcripts = [transcript for transcript, label in zip(transcripts, labels) if label == 'introduction']
+        print(filtered_transcripts)
+        return filtered_transcripts
     
     
     def format_transcript(self, transcript: str, speaker_mapping: dict) -> str:
