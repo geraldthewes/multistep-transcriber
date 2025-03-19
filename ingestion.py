@@ -120,8 +120,10 @@ class VideoTranscriber:
         # Initialize GLiNER with the base model
         self.entity_model = None
         self.noun_correction_model = None
-        self.corrected_transcript_model = "granite3.2:latest" # need 128K token content length or more
-        self.people_filter_model = "deepseek-v2:latest"
+        #self.corrected_transcript_model = "granite3.2:latest" # need 128K token content length or more
+        #self.people_filter_model = "deepseek-v2:latest"
+        self.people_intro_model_name = "gerald29/setfit-bge-small-v1.5-sst2-8-shot-introduction"
+        self.people_intro_model = None
 
     @cached_file_object('.raw_transcript')
     def initial_transcription(self, video_path: str) -> str:
@@ -470,84 +472,21 @@ class VideoTranscriber:
         except Exception as e:
             print(f"Error in speaker mapping: {e}")
             return {}
-        
-    @cached_file_object('.people')
-    def noun_filter(self, video_path: str, nouns: list):
-        """ Extract people names from list of nouns """
-        try:
-            prompt = f'''Your task is to take a list of entities/nouns that is comma separated and extract only the people names and ignore all other nouns. Return the list as a JSON array of people's names only.
 
-Here is the list of nouns:
-            {nouns}
-            '''
-            # print(NounList.model_json_schema())
-            response = generate(
-                 model=self.people_filter_model,
-                 prompt=prompt,
-                 stream=False,
-                 format=NounList.model_json_schema())
-            return NounList.model_validate_json(response.response).nouns
-            
-            
-        except Exception as e:
-             print(f"Error extracting people names: {e}")
-             return None
-         
-    @cached_file_object('.transcript_filtered')
-    def filter_transcripts(self, video_path: str, json_array, noun_list):
-        # Convert noun list to a set for faster lookup
-        noun_set = set(noun_list)
-        print(noun_set)
-
-        # Filter the array
-        filtered_array = [
-            obj for obj in json_array 
-            if any(noun in obj["transcript"] for noun in noun_set)
-        ]
-
-        return filtered_array
-
-    def find_introductions_llm(self, transcript):
-        """
-        Use an LLM to find sentences where a speaker introduces themselves.
-        It's OK, but still contains sentences like 'We could start with Joe Mary Engel in that order.'
-        that would cause issues.
-
-        Args:
-            transcript (str): The full text of the transcript.
-
-        Returns:
-            list: Sentences classified as introductions.
-        """
-        # Split transcript into sentences
-
-        # Load a zero-shot classification model from Hugging Face
-        classifier = pipeline("zero-shot-classification", model="facebook/bart-large-mnli")
-
-        # Define labels for classification
-        labels = ["introduction", "not_introduction"]
-
-        intro_sentences = []
-        sentences = [item['transcript'] for item in transcript]
-        for sentence in sentences:
-            # Classify the sentence
-            result = classifier(sentence, candidate_labels=labels)
-            if result['labels'][0] == "introduction" and result['scores'][0] > 0.8:  # Confidence threshold
-                intro_sentences.append(sentence.strip())
-
-        print(intro_sentences)
-        return intro_sentences
-
+    @cached_file_object('.introductions')
     def find_introductions_setfit(self, video_path: str, transcripts):
-        intro_sentences = []
-        imodel = SetFitModel.from_pretrained("setfit-bge-small-v1.5-sst2-8-shot-introduction")         
-        sentences = [item['transcript'] for item in transcripts]
-        labels = imodel.predict(sentences)
-        print(labels)
-        # Filter the transcripts where the corresponding label is 'introduction'
-        filtered_transcripts = [transcript for transcript, label in zip(transcripts, labels) if label == 'introduction']
-        print(filtered_transcripts)
-        return filtered_transcripts
+        ''' Identify segments that are speaker introductions using a trained setfit model '''
+        try:
+            intro_sentences = []
+            imodel = SetFitModel.from_pretrained("gerald29/setfit-bge-small-v1.5-sst2-8-shot-introduction")         
+            sentences = [item['transcript'] for item in transcripts]
+            labels = imodel.predict(sentences)
+            # Filter the transcripts where the corresponding label is 'introduction'
+            filtered_transcripts = [transcript for transcript, label in zip(transcripts, labels) if label == 'introduction']
+            return filtered_transcripts
+        except Exception as e:
+             print(f"Error extracting speaker introductions: {e}")
+             return None
     
     
     def format_transcript(self, transcript: str, speaker_mapping: dict) -> str:
@@ -585,18 +524,13 @@ Here is the list of nouns:
 
         print('Step 5: Merge transcript and diarization')
         merged_transcript = self.merge_transcript_diarization(video_path, corrected_transcript,  speaker_mapping )
+
         print('Step 6: Compress merged transcript')
         compressed_transcript = self.compress_transcript(video_path, merged_transcript)
 
-        print('Step 7: Extract People Names')
-        people_name = self.noun_filter(video_path, noun_list)
+        print('Step 7: Filter transcript by speaker introductions')
+        speaker_introductions = self.find_introductions_setfit(video_path, compressed_transcript)                
 
-
-        print('Step 8: Filter transcript by people')
-        people_name = self.filter_transcripts(video_path, compressed_transcript, people_name)
-
-        self.find_introductions_llm(compressed_transcript)
-        self.find_introductions_setfit(video_path, compressed_transcript)        
         #print('Step 6: Final formatting')
         #final_transcript = self.format_transcript(corrected_transcript, speaker_mapping)
         #print(final_transcript)
