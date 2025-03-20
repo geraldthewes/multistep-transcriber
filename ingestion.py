@@ -170,7 +170,7 @@ class VideoTranscriber:
             print(f"Error in initial transcription: {e}")
             return None
 
-    ''' Extract what we ned from results '''
+    ''' Extract what we need from results '''
     def group_by_label(self, data):
         # Initialize an empty dictionary to hold the results
         result = {}
@@ -450,20 +450,27 @@ class VideoTranscriber:
 
         compressed = []
         current = dict(entries[0])  # Create a copy of the first entry
+        speakers = {current['speaker']}
 
         for entry in entries[1:]:
             # Check if current entry matches the previous one in transcript and speaker
             if (entry['transcript'] == current['transcript'] and 
-                entry['speaker'] == current['speaker'] and 
                 entry['start'] == current['end']):  # Check if times are consecutive
                 # Update the end time to the current entry's end time
                 current['end'] = entry['end']
+                speakers.add(entry['speaker'])
             else:
                 # Add the completed entry to our result and start a new one
+                if len(speakers) > 1:
+                    # If the same transcript was mapped to different speakers, set to unknown
+                    current['speaker'] = 'UNKNOWN'
                 compressed.append(current)
                 current = dict(entry)  # Create a copy of the new entry
-
+                speakers = {current['speaker']}
         # Don't forget to add the last entry
+        if len(speakers) > 1:
+            # If the same transcript was mapped to different speakers, set to unknown
+            current['speaker'] = 'UNKNOWN'
         compressed.append(current)
 
         return compressed
