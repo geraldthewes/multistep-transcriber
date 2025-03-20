@@ -231,20 +231,35 @@ class VideoTranscriber:
         # Now flatten the result
         return ','.join(self.flatten_texts(result))
 
-
     @cached_file('.nouns')
     def extract_nouns(self, video_path: str, transcript: str) -> list:
+        labels = ["Person", "Organizations", "Date", "Positions", "Locations"]
+        entities =  self.extract_entities(video_path, labels, transcript)
+        entities_by_label = self.group_by_label(entities)
+        entities_merged = self.merge_similar_texts(entities_by_label)
+        return entities_merged
+
+    @cached_file_object('.speaker_names')
+    def extract_persons(self, video_path: str, transcripts: str) -> list:
+        labels = ["Person"]
+        entities = self.extract_entities(video_path, labels, transcripts)
+        speaker_names=[]
+        for introduction in entities:
+            name = [item['text'] for item in introduction]
+            if name:
+                speaker_names.append(name[0])
+        speakers = [transcript | {'speaker_name': name} for transcript, name in zip(transcripts, speaker_names)]
+        return speakers
+        
+    def extract_entities(self, video_path: str, labels: list, transcript: str) -> list:
         """Extract proper nouns and technical terms from master document"""
         try:
             if not self.entity_model:
                 self.entity_model = GLiNER.from_pretrained("urchade/gliner_medium-v2.1")
             transcript_sentences = [item['transcript'] for item in transcript]            
-            labels = ["Person", "Organizations", "Date", "Positions", "Locations"]
             # Perform entity prediction
             entities = self.entity_model.batch_predict_entities(transcript_sentences, labels, threshold=0.5)
-            entities_by_label = self.group_by_label(entities)
-            entities_merged = self.merge_similar_texts(entities_by_label)
-            return entities_merged
+            return entities
         except Exception as e:
             print(f"Error extracting nouns: {e}")
             traceback.print_exc()            
@@ -487,7 +502,27 @@ class VideoTranscriber:
         except Exception as e:
              print(f"Error extracting speaker introductions: {e}")
              return None
-    
+
+    def speaker_to_name(self, introductions: str):
+        # Initialize an empty dictionary for the result
+        result = {}
+        
+        # Iterate over each entry in the list
+        for item in introductions:
+            speaker_key = item['speaker']
+            speaker_value = item['speaker_name']
+
+            # If the speaker is UNKNOWN, set the value to UNKNOWN
+            if speaker_key == "UNKNOWN":
+                speaker_value = "UNKNOWN"
+
+            # Add the mapping to the result dictionary
+            result[speaker_key] = speaker_value
+        return result
+
+    @cached_file_object('.final')    
+    def map_speakers(self, video_path: str, transcripts: list, speaker_to_name: dict):
+        return  [transcript | {'speaker_name': speaker_to_name.get(transcript['speaker'],transcript['speaker'])} for transcript in transcripts]
     
     def format_transcript(self, transcript: str, speaker_mapping: dict) -> str:
         """Format final transcript as Markdown"""
@@ -531,6 +566,14 @@ class VideoTranscriber:
         print('Step 7: Filter transcript by speaker introductions')
         speaker_introductions = self.find_introductions_setfit(video_path, compressed_transcript)                
 
+        print('Step 8: Extract persons from intro')
+        speaker_names = self.extract_persons(video_path, speaker_introductions)
+        speakers = self.speaker_to_name(speaker_names)
+
+        print('Step 9: Map speaker names')
+        transcript_final = self.map_speakers(video_path, compressed_transcript, speakers)
+        
+        
         #print('Step 6: Final formatting')
         #final_transcript = self.format_transcript(corrected_transcript, speaker_mapping)
         #print(final_transcript)
