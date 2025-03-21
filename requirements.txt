@@ -1,0 +1,10 @@
+ctranslate2==4.4.0
+faster-whisper 
+transformers 
+pyannote.audio 
+torch 
+tqdm
+ollama
+sentence_transformers
+gliner
+setfit
