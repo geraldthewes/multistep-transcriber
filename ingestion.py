@@ -363,7 +363,16 @@ class VideoTranscriber:
                     "end": turn.end,
                     "speaker": speaker
                 })
-            return speaker_segments
+
+            # There are cases of segments withing segments, drop them,
+            prev_end = speaker_segments[0]["end"]
+            speaker_filter = []
+            for segment in speaker_segments[1:]:
+                if segment["start"] >= prev_end:
+                    speaker_filter.append(segment)
+                prev_end = max(prev_end, segment["end"])
+                
+            return speaker_filter
         except Exception as e:
             print(f"Error in speaker identification: {e}")
             return {}
@@ -404,20 +413,22 @@ class VideoTranscriber:
                 next_end = min(next_end, curr_diar["end"])
 
             # If no transcript in this segment, create a silent segment
-            if not curr_trans or (curr_diar and curr_diar["start"] < curr_trans["start"]):
+            if not curr_trans or (curr_diar and curr_diar["end"] < curr_trans["start"]):
                 if curr_diar:
                     merged.append({
                         "start": current_time,
                         "end": min(next_end, curr_diar["end"]),
                         "transcript": "[SILENCE]",
-                        "speaker": curr_diar["speaker"]
+                        "speaker": curr_diar["speaker"],
+                        "duration": min(next_end, curr_diar["end"]) - current_time
                     })
                 else:
                     merged.append({
                         "start": current_time,
                         "end": next_end,
                         "transcript": "[SILENCE]",
-                        "speaker": "UNKNOWN"
+                        "speaker": "UNKNOWN",
+                        "duration": next_end - current_time
                     })
             # If we have a transcript segment
             else:
@@ -430,7 +441,8 @@ class VideoTranscriber:
                     "start": current_time,
                     "end": next_end,
                     "transcript": curr_trans["transcript"],
-                    "speaker": speaker
+                    "speaker": speaker,
+                    "duration": next_end - current_time,
                 })
 
             # Update indices and current_time
@@ -450,7 +462,8 @@ class VideoTranscriber:
 
         compressed = []
         current = dict(entries[0])  # Create a copy of the first entry
-        speakers = {current['speaker']}
+        duration = current["duration"]
+        speaker = current["speaker"]
 
         for entry in entries[1:]:
             # Check if current entry matches the previous one in transcript and speaker
@@ -458,19 +471,16 @@ class VideoTranscriber:
                 entry['start'] == current['end']):  # Check if times are consecutive
                 # Update the end time to the current entry's end time
                 current['end'] = entry['end']
-                speakers.add(entry['speaker'])
+                if entry["duration"] > duration:
+                    # Select one ker corresponding to largest duration
+                    speaker = entry['speaker']
             else:
                 # Add the completed entry to our result and start a new one
-                if len(speakers) > 1:
-                    # If the same transcript was mapped to different speakers, set to unknown
-                    current['speaker'] = 'UNKNOWN'
                 compressed.append(current)
                 current = dict(entry)  # Create a copy of the new entry
-                speakers = {current['speaker']}
+                duration = current['duration']
+                speaker  =  current['speaker']
         # Don't forget to add the last entry
-        if len(speakers) > 1:
-            # If the same transcript was mapped to different speakers, set to unknown
-            current['speaker'] = 'UNKNOWN'
         compressed.append(current)
 
         return compressed
