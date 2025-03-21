@@ -71,5 +71,15 @@ pip install -r requirements.txt
 ```
 export HF_TOKEN=
 export OLLAMA_HOST=
-python ingestion.py /mnt/data3/AI/software/VideoRAG/Lexington/DPa2iRgzadM.mp4
+python ingestion.py /mnt/data3/AI/software/VideoRAG/Lexington/DPa2iRgzadM.wav
 ```
+
+## You Tube
+
+YouTube viodeos can be do be downalod as follows
+
+```
+yt-dlp -o "%(id)s.%(ext)s" -S "res:720" https://www.youtube.com/live/FpC_Lp_Kq_0  -P .
+ffmpeg -i file.mkv -q:a 0 -map a audio_output.wav
+```
+
