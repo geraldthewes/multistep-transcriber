@@ -540,16 +540,17 @@ class VideoTranscriber:
     @cached_file_object('.final')    
     def map_speakers(self, video_path: str, transcripts: list, speaker_to_name: dict):
         return  [transcript | {'speaker_name': speaker_to_name.get(transcript['speaker'],transcript['speaker'])} for transcript in transcripts]
-    
-    def format_transcript(self, transcript: str, speaker_mapping: dict) -> str:
+
+    @cached_file('.formatted')
+    def format_transcript(self, video_path: str, transcripts: str) -> str:
         """Format final transcript as Markdown"""
         try:
             formatted = "# Transcribed Video\n\n"
             # This is a simplified formatting - enhance as needed
-            for line in transcript.split('.'):
-                if line.strip():
-                    speaker = list(speaker_mapping.values())[0]  # Simplified
-                    formatted += f"**{speaker}:** {line.strip()}.\n\n"
+            for entry in transcripts:
+                speaker = entry['speaker_name']
+                transcript = entry['transcript']
+                formatted += f"{speaker}:{transcript}\n"
             return formatted
         except Exception as e:
             print(f"Error formatting transcript: {e}")
@@ -591,11 +592,10 @@ class VideoTranscriber:
         transcript_final = self.map_speakers(video_path, compressed_transcript, speakers)
         
         
-        #print('Step 6: Final formatting')
-        #final_transcript = self.format_transcript(corrected_transcript, speaker_mapping)
-        #print(final_transcript)
+        print('Step 10: Final formatting')
+        transcript_formatted = self.format_transcript(video_path, transcript_final)
         
-        # return final_transcript
+        return transcript_formatted
 
 
 
