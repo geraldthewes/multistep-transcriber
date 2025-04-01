@@ -296,47 +296,72 @@ def merge_transcript_diarization(video_path: str, transcript: List[Dict[str, Any
     # Proceed with merging if both transcript and diarization have data
     while t_idx < len(transcript):
         t_segment = transcript[t_idx]
-        t_start, t_end = t_segment["start"], t_segment["end"]
-        t_mid = t_start + (t_end - t_start) / 2 # Midpoint for speaker assignment
+        # Use .get() for safer access to potentially missing keys
+        t_start = t_segment.get("start")
+        t_end = t_segment.get("end")
 
-        assigned_speaker = "UNKNOWN"
-
-        # Find the best matching speaker segment (simple midpoint check)
         best_match_speaker = "UNKNOWN"
-        found_match = False
-        # Iterate through diarization segments to find overlap
-        temp_d_idx = d_idx # Use a temporary index to search from the current position
-        while temp_d_idx < len(diarization):
-            d_segment = diarization[temp_d_idx]
-            d_start, d_end = d_segment["start"], d_segment["end"]
+        t_mid = None # Initialize t_mid
 
-            # Check if transcript midpoint falls within diarization segment
-            if d_start <= t_mid < d_end:
-                best_match_speaker = d_segment["speaker"]
-                found_match = True
-                # Advance the main diarization index past this segment if it ends before the transcript segment
-                if d_end <= t_end:
-                    d_idx = temp_d_idx + 1
-                break # Found the speaker for this transcript segment
+        # Check if timestamps are valid before calculating midpoint and searching speaker
+        if isinstance(t_start, (int, float)) and isinstance(t_end, (int, float)):
+            # Ensure start is not after end, which might indicate bad data
+            if t_start <= t_end:
+                t_mid = t_start + (t_end - t_start) / 2
 
-            # If diarization segment ends before transcript midpoint, advance diarization index
-            elif d_end <= t_mid:
-                 # Only advance main index if we are sure this segment is before the relevant one
-                 if temp_d_idx == d_idx:
-                     d_idx +=1
-                 temp_d_idx += 1 # Keep searching forward with temp index
+                # --- Speaker search logic using t_mid ---
+                temp_d_idx = d_idx # Use a temporary index to search from the current position
+                while temp_d_idx < len(diarization):
+                    d_segment = diarization[temp_d_idx]
+                    # Use .get() for safer access in diarization segments too
+                    d_start = d_segment.get("start")
+                    d_end = d_segment.get("end")
+                    speaker = d_segment.get("speaker", "UNKNOWN") # Default speaker if missing
 
-            # If diarization segment starts after transcript midpoint, stop searching for this transcript segment
-            elif d_start >= t_mid:
-                break
+                    # Check diarization timestamps are valid
+                    if isinstance(d_start, (int, float)) and isinstance(d_end, (int, float)) and d_start <= d_end:
+                        # Check if transcript midpoint falls within diarization segment
+                        if d_start <= t_mid < d_end:
+                            best_match_speaker = speaker
+                            # Advance the main diarization index past this segment if it ends before or at the transcript segment's end
+                            if d_end <= t_end:
+                                d_idx = temp_d_idx + 1
+                            break # Found the speaker for this transcript segment
 
+                        # If diarization segment ends before transcript midpoint, advance diarization index
+                        elif d_end <= t_mid:
+                            # Only advance main index if we are sure this segment is before the relevant one
+                            if temp_d_idx == d_idx:
+                                d_idx += 1
+                            temp_d_idx += 1 # Keep searching forward with temp index
+
+                        # If diarization segment starts after transcript midpoint, stop searching for this transcript segment
+                        elif d_start >= t_mid:
+                            break
+                    else:
+                        # Handle invalid diarization segment timestamps (e.g., log warning, skip segment)
+                        # print(f"Warning: Skipping diarization segment due to invalid timestamps: {d_segment}")
+                        if temp_d_idx == d_idx: # Ensure main index advances if skipping the current segment
+                            d_idx += 1
+                        temp_d_idx += 1 # Move to the next diarization segment
+                # --- End Speaker search logic ---
+            else:
+                print(f"Warning: Skipping speaker search for transcript segment due to invalid time range (start > end): {t_segment}")
+        else:
+            print(f"Warning: Skipping speaker search for transcript segment due to missing/invalid timestamps: {t_segment}")
+            # best_match_speaker remains "UNKNOWN"
+
+        # Calculate duration safely, default to 0 if timestamps are invalid
+        duration = 0
+        if isinstance(t_start, (int, float)) and isinstance(t_end, (int, float)) and t_start <= t_end:
+            duration = t_end - t_start
 
         merged.append({
-            "start": t_start,
-            "end": t_end,
-            "transcript": t_segment["transcript"],
+            "start": t_start, # Keep original value, even if None
+            "end": t_end,     # Keep original value, even if None
+            "transcript": t_segment.get("transcript", "[TRANSCRIPT MISSING]"), # Use .get for safety
             "speaker": best_match_speaker,
-            "duration": t_end - t_start,
+            "duration": duration, # Use safely calculated duration
         })
         t_idx += 1
 
