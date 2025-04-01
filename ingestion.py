@@ -600,11 +600,11 @@ class VideoTranscriber:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Transcribe a video using a master document.")
-    
+    parser = argparse.ArgumentParser(description="Transcribe a video file.")
+
     # Add arguments
     parser.add_argument("video_path", type=str, help="Path to the video file")
-    
+
     # Parse arguments
     args = parser.parse_args()
     
@@ -614,17 +614,20 @@ def main():
         print("Error: File(s) not found")
         sys.exit(1)
 
-    print('Setup')
+    # Initialize the transcriber (loads models)
     transcriber = VideoTranscriber()
-    print(f'Transcribe {video_path}')
-    result = transcriber.transcribe_video(video_path)
-    
-    # Save output
-    #with open("transcription.md", "w") as f:
-    #    f.write(result)
-    #print("Transcription complete. Output saved to transcription.md")
 
-    
+    print(f'\nStarting transcription process for: {video_path}')
+    result = transcriber.transcribe_video(video_path)
+
+    # Output is now saved within transcribe_video, but you could print status here
+    if "failed" in result.lower():
+         print(f"\nTranscription process encountered errors.")
+    else:
+         print(f"\nTranscription process finished for {video_path}.")
+         # The final file path is printed within transcribe_video
+
+
 if __name__ == "__main__":
     main()
 
