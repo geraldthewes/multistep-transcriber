@@ -25,7 +25,7 @@ def initial_transcription(video_path: str, whisper_model: WhisperModel) -> List[
         segments, info = whisper_model.transcribe(video_path)
         output_lines = []
         current_start = None
-        curr_end = None
+        current_end = None
         current_text = None
 
         for segment in segments:
@@ -33,7 +33,7 @@ def initial_transcription(video_path: str, whisper_model: WhisperModel) -> List[
                 if current_text is not None:
                     output_lines.append({
                         "start": current_start,
-                        "end": curr_end,
+                        "end": current_end,
                         "transcript": current_text
                     })
                 current_start = segment.start
@@ -274,99 +274,81 @@ def identify_speakers(video_path: str, diarization_pipeline: Pipeline) -> List[D
 @cached_file_object('.merged')
 def merge_transcript_diarization(video_path: str, transcript: List[Dict[str, Any]], diarization: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """Merges transcript segments with speaker diarization information."""
+        # Create a new list to store merged results
     merged = []
-    t_idx, d_idx = 0, 0
 
-    if not transcript:
-        return [] # Return empty if no transcript
+    # Sort both arrays by start time just to be safe
+    transcript = sorted(transcript, key=lambda x: x["start"])
+    diarization = sorted(diarization, key=lambda x: x["start"])
 
-    # If diarization failed or is empty, assign UNKNOWN speaker to all transcript segments
-    if not diarization:
-        for segment in transcript:
-             merged.append({
-                 "start": segment["start"],
-                 "end": segment["end"],
-                 "transcript": segment["transcript"],
-                 "speaker": "UNKNOWN",
-                 "duration": segment["end"] - segment["start"]
-             })
-        return merged
+    # Keep track of current position in both arrays
+    t_idx = 0  # transcript index
+    d_idx = 0  # diarization index
 
+    # Handle case where one or both arrays are empty
+    if not transcript or not diarization:
+        return transcript if transcript else []
 
-    # Proceed with merging if both transcript and diarization have data
-    while t_idx < len(transcript):
-        t_segment = transcript[t_idx]
-        # Use .get() for safer access to potentially missing keys
-        t_start = t_segment.get("start")
-        t_end = t_segment.get("end")
+    current_time = min(transcript[0]["start"], diarization[0]["start"])
+    max_time = max(
+        transcript[-1]["end"] if transcript else 0,
+        diarization[-1]["end"] if diarization else 0
+    )
 
-        best_match_speaker = "UNKNOWN"
-        t_mid = None # Initialize t_mid
+    while current_time < max_time and (t_idx < len(transcript) or d_idx < len(diarization)):
+        # Get current transcript and diarization segments if available
+        curr_trans = transcript[t_idx] if t_idx < len(transcript) else None
+        curr_diar = diarization[d_idx] if d_idx < len(diarization) else None
 
-        # Check if timestamps are valid before calculating midpoint and searching speaker
-        if isinstance(t_start, (int, float)) and isinstance(t_end, (int, float)):
-            # Ensure start is not after end, which might indicate bad data
-            if t_start <= t_end:
-                t_mid = t_start + (t_end - t_start) / 2
+        # Determine the next end time
+        next_end = float('inf')
+        if curr_trans:
+            next_end = min(next_end, curr_trans["end"])
+        if curr_diar:
+            next_end = min(next_end, curr_diar["end"])
 
-                # --- Speaker search logic using t_mid ---
-                temp_d_idx = d_idx # Use a temporary index to search from the current position
-                while temp_d_idx < len(diarization):
-                    d_segment = diarization[temp_d_idx]
-                    # Use .get() for safer access in diarization segments too
-                    d_start = d_segment.get("start")
-                    d_end = d_segment.get("end")
-                    speaker = d_segment.get("speaker", "UNKNOWN") # Default speaker if missing
-
-                    # Check diarization timestamps are valid
-                    if isinstance(d_start, (int, float)) and isinstance(d_end, (int, float)) and d_start <= d_end:
-                        # Check if transcript midpoint falls within diarization segment
-                        if d_start <= t_mid < d_end:
-                            best_match_speaker = speaker
-                            # Advance the main diarization index past this segment if it ends before or at the transcript segment's end
-                            if d_end <= t_end:
-                                d_idx = temp_d_idx + 1
-                            break # Found the speaker for this transcript segment
-
-                        # If diarization segment ends before transcript midpoint, advance diarization index
-                        elif d_end <= t_mid:
-                            # Only advance main index if we are sure this segment is before the relevant one
-                            if temp_d_idx == d_idx:
-                                d_idx += 1
-                            temp_d_idx += 1 # Keep searching forward with temp index
-
-                        # If diarization segment starts after transcript midpoint, stop searching for this transcript segment
-                        elif d_start >= t_mid:
-                            break
-                    else:
-                        # Handle invalid diarization segment timestamps (e.g., log warning, skip segment)
-                        # print(f"Warning: Skipping diarization segment due to invalid timestamps: {d_segment}")
-                        if temp_d_idx == d_idx: # Ensure main index advances if skipping the current segment
-                            d_idx += 1
-                        temp_d_idx += 1 # Move to the next diarization segment
-                # --- End Speaker search logic ---
+        # If no transcript in this segment, create a silent segment
+        if not curr_trans or (curr_diar and curr_diar["end"] < curr_trans["start"]):
+            if curr_diar:
+                merged.append({
+                    "start": current_time,
+                    "end": min(next_end, curr_diar["end"]),
+                    "transcript": "[SILENCE]",
+                    "speaker": curr_diar["speaker"],
+                    "duration": min(next_end, curr_diar["end"]) - current_time
+                })
             else:
-                print(f"Warning: Skipping speaker search for transcript segment due to invalid time range (start > end): {t_segment}")
+                merged.append({
+                    "start": current_time,
+                    "end": next_end,
+                    "transcript": "[SILENCE]",
+                    "speaker": "UNKNOWN",
+                    "duration": next_end - current_time
+                })
+        # If we have a transcript segment
         else:
-            print(f"Warning: Skipping speaker search for transcript segment due to missing/invalid timestamps: {t_segment}")
-            # best_match_speaker remains "UNKNOWN"
+            speaker = "UNKNOWN"
+            # Find overlapping diarization segment
+            if curr_diar and curr_diar["start"] <= curr_trans["end"] and curr_diar["end"] >= curr_trans["start"]:
+                speaker = curr_diar["speaker"]
 
-        # Calculate duration safely, default to 0 if timestamps are invalid
-        duration = 0
-        if isinstance(t_start, (int, float)) and isinstance(t_end, (int, float)) and t_start <= t_end:
-            duration = t_end - t_start
+            merged.append({
+                "start": current_time,
+                "end": next_end,
+                "transcript": curr_trans["transcript"],
+                "speaker": speaker,
+                "duration": next_end - current_time,
+            })
 
-        merged.append({
-            "start": t_start, # Keep original value, even if None
-            "end": t_end,     # Keep original value, even if None
-            "transcript": t_segment.get("transcript", "[TRANSCRIPT MISSING]"), # Use .get for safety
-            "speaker": best_match_speaker,
-            "duration": duration, # Use safely calculated duration
-        })
-        t_idx += 1
+        # Update indices and current_time
+        current_time = next_end
+
+        if curr_trans and next_end >= curr_trans["end"]:
+            t_idx += 1
+        if curr_diar and next_end >= curr_diar["end"]:
+            d_idx += 1
 
     return merged
-
 
 @cached_file_object('.compressed')
 def compress_transcript(video_path: str, entries: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -427,56 +409,27 @@ def find_introductions_setfit(video_path: str, transcripts: List[Dict[str, Any]]
          traceback.print_exc()
          return [] # Return empty list on general failure
 
-
-def speaker_to_name_mapping(introductions: List[Dict[str, Any]]) -> Dict[str, str]:
-    """Creates a mapping from speaker ID (e.g., SPEAKER_01) to extracted name."""
+def speaker_to_name_mapping(introductions: str):
+    # Initialize an empty dictionary for the result
     result = {}
-    processed_speakers = set() # Keep track of speaker IDs already mapped
 
+    # Iterate over each entry in the list
     for item in introductions:
-        speaker_id = item.get('speaker')
-        speaker_name = item.get('speaker_name', 'UNKNOWN') # Default to UNKNOWN if key missing
+        speaker_key = item['speaker']
+        speaker_value = item['speaker_name']
 
-        # Only map if we have a valid speaker ID and haven't mapped it yet
-        if speaker_id and speaker_id != "UNKNOWN" and speaker_id not in processed_speakers:
-             # Prefer non-UNKNOWN names if available for the same speaker ID
-             if speaker_name != "UNKNOWN":
-                 result[speaker_id] = speaker_name
-                 processed_speakers.add(speaker_id)
-             # If current name is UNKNOWN, but we don't have a mapping yet, add it tentatively
-             elif speaker_id not in result:
-                 result[speaker_id] = "UNKNOWN"
-                 # Don't add to processed_speakers yet, allow overwrite by a real name later
+        # If the speaker is UNKNOWN, set the value to UNKNOWN
+        if speaker_key == "UNKNOWN":
+            speaker_value = "UNKNOWN"
 
-    # Ensure all speaker IDs present in the input (even if not in introductions)
-    # have at least an UNKNOWN mapping if no name was found.
-    # This part might be redundant if the input `introductions` covers all segments,
-    # but useful if `introductions` is just a subset.
-    # Consider if you need this based on how `introductions` is generated.
-    # all_speaker_ids = {item.get('speaker') for item in introductions if item.get('speaker')}
-    # for speaker_id in all_speaker_ids:
-    #     if speaker_id and speaker_id not in result:
-    #          result[speaker_id] = "UNKNOWN"
-
-
+        # Add the mapping to the result dictionary
+        result[speaker_key] = speaker_value
     return result
 
 @cached_file_object('.final')
 def map_speakers_to_final_transcript(video_path: str, transcripts: List[Dict[str, Any]], speaker_name_map: Dict[str, str]) -> List[Dict[str, Any]]:
     """Applies the speaker ID to name mapping to the full transcript."""
-    final_transcript = []
-    for transcript in transcripts:
-        speaker_id = transcript.get('speaker', 'UNKNOWN')
-        # Get the mapped name, default to the original speaker ID if not found,
-        # and finally default to 'UNKNOWN' if speaker_id itself was missing/None.
-        resolved_name = speaker_name_map.get(speaker_id, speaker_id if speaker_id else "UNKNOWN")
-
-        # Create a new dictionary to avoid modifying the original
-        final_entry = dict(transcript)
-        final_entry['speaker_name'] = resolved_name
-        final_transcript.append(final_entry)
-
-    return final_transcript
+    return  [transcript | {'speaker_name': speaker_name_map.get(transcript['speaker'],transcript['speaker'])} for transcript in transcripts]    
 
 
 @cached_file('.formatted')
