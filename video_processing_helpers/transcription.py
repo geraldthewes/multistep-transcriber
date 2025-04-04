@@ -9,21 +9,23 @@ from faster_whisper import WhisperModel
 
 from .caching import cached_file, cached_file_object
 
-# Approximate conversion factor (1 word ≈ 1.34 tokens) - Moved from ingestion.py
-WORDS_TO_TOKENS_RATIO = 1.34
+_whisper_model = None
 
-whisper_model = None
+def get_whisper_model():
+    global _whisper_model
+    if _whisper_model is None:
+        _whisper_model = WhisperModel("/mnt/data3/AI/software/VideoRAG/faster-distil-whisper-large-v3")
+        _whisper_model.logger.setLevel(logging.WARNING)
+        
+    return _whisper_model
 
 @cached_file_object('.raw_transcript')
 def initial_transcription(video_path: str) -> str:
     """Perform initial transcription using Whisper"""
     try:
-        # lazy Loading
-        if not whisper_model:
-            whisper_model = WhisperModel("/mnt/data3/AI/software/VideoRAG/faster-distil-whisper-large-v3")
-            whisper_model.logger.setLevel(logging.WARNING)
+        whisper_model = get_whisper_model()
 
-        segments, info = self.whisper_model.transcribe(video_path)
+        segments, info = whisper_model.transcribe(video_path)
         output_lines = []
         current_start = None
         curr_end = None
