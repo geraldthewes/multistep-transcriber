@@ -65,9 +65,6 @@ def cached_file_object(file_ext):
 
             # Compute the result since cache doesn't exist
             result = func(video_path, *args, **kwargs)
-            if not result:  # Check for failure
-                print(f"Error in computing {func.__name__}")
-                return f"{func.__name__} failed"
 
             # Save to cache
             with open(cache_file, 'w', encoding='utf-8') as file:

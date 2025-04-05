@@ -9,7 +9,14 @@ from sentence_transformers import SentenceTransformer, util
 
 from .caching import cached_file, cached_file_object
 
-noun_correction_model = None
+_noun_correction_model = None
+
+def get_noun_correction_model():
+    global _noun_correction_model
+    if _noun_correction_model is None:
+        _noun_correction_model = SentenceTransformer('paraphrase-MiniLM-L6-v2')
+    return _noun_correction_model
+
 
 def standardize_nouns_ai(transcript: list, noun_list: list):
     """
@@ -23,8 +30,7 @@ def standardize_nouns_ai(transcript: list, noun_list: list):
         str: Standardized transcript with line breaks preserved
     """
     # Load the model
-    if not noun_correction_model:
-        noun_correction_model = SentenceTransformer('paraphrase-MiniLM-L6-v2')
+    noun_correction_model = get_noun_correction_model() 
 
     # Compute embeddings for standard nouns
     noun_embeddings = noun_correction_model.encode(noun_list, convert_to_tensor=True)
@@ -80,7 +86,7 @@ def correct_transcript(video_path: str, raw_transcript: list, nouns: str) -> str
     """Correct transcript using LLM and noun list"""
     try:
         nouns_list = nouns.split(',')
-        return self.standardize_nouns_ai(raw_transcript, nouns_list)
+        return standardize_nouns_ai(raw_transcript, nouns_list)
     except Exception as e:
         print(f"Error correcting transcript: {e}")
         traceback.print_exc()            

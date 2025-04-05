@@ -100,8 +100,10 @@ def extract_nouns(video_path: str, transcript: str) -> list:
     return entities_merged
 
 @cached_file_object('.speaker_names')
-def extract_persons(ideo_path: str, transcripts: str) -> list:
+def extract_persons(video_path: str, transcripts: str) -> list:
     labels = ["Person"]
+    if not transcripts:
+        return []
     entities = extract_entities(video_path, labels, transcripts)
     speaker_names=[]
     for introduction in entities:

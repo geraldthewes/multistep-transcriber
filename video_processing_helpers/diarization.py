@@ -8,18 +8,25 @@ from pyannote.audio import Pipeline
 
 from .caching import cached_file, cached_file_object
 
-diarization_model = "pyannote/speaker-diarization-3.1"
-diarization_pipeline = None
+
+_diarization_pipeline = None
+
+def get_diarization_pipeline():
+    global _diarization_pipeline
+    diarization_model = "pyannote/speaker-diarization-3.1"
+    if _diarization_pipeline is None:
+        _diarization_pipeline = Pipeline.from_pretrained(
+            diarization_model,
+            use_auth_token=os.environ["HF_TOKEN"])
+        _diarization_pipeline.to(torch.device("cuda"))
+        
+    return _diarization_pipeline
 
 @cached_file_object('.diarization')
 def identify_speakers(video_path: str, transcript: str) -> dict:
     """Perform speaker diarization and mapping"""
     try:
-        if not diarization_pipeline:
-            diarization_pipeline = Pipeline.from_pretrained(
-                diarization_model,
-                use_auth_token=os.environ["HF_TOKEN"])
-            diarization_pipeline.to(torch.device("cuda"))
+        diarization_pipeline = get_diarization_pipeline()
 
         # Perform diarization
         diarization = diarization_pipeline(video_path)
