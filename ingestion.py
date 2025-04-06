@@ -67,6 +67,8 @@ class VideoTranscriber:
         
         print('Step 10: Final formatting')
         transcript_formatted = format_transcript(video_path, transcript_final)
+        transcript_markdown = format_markdown(video_path, transcript_final)        
+        
         
         return transcript_formatted
 

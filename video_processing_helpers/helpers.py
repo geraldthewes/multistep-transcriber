@@ -155,3 +155,28 @@ def format_transcript(video_path: str, transcripts: str) -> str:
     except Exception as e:
         print(f"Error formatting transcript: {e}")
         return transcript
+
+@cached_file('.md')
+def format_markdown(video_path: str, transcripts: List[Dict[str, Any]]) -> str:
+    """Formats the final transcript as Markdown."""
+    try:
+        formatted = "# Transcribed Video\n\n"
+        current_speaker = None
+        for entry in transcripts:
+            speaker = entry.get('speaker_name', 'UNKNOWN') # Use .get for safety
+            transcript_text = entry.get('transcript', '[TRANSCRIPT MISSING]')
+
+            # Add speaker heading only when the speaker changes
+            if speaker != current_speaker:
+                formatted += f"**{speaker}:**\n"
+                current_speaker = speaker
+
+            # Add the transcript text, indented slightly
+            formatted += f"- {transcript_text}\n"
+        return formatted
+    except Exception as e:
+        print(f"Error formatting transcript: {e}")
+        # Attempt to return a basic representation even on error
+        return json.dumps(transcripts, indent=2)
+
+    
