@@ -9,8 +9,18 @@ import asyncio
 import aiohttp
 import heapq
 import numpy as np
+from ollama import AsyncClient
 
 import matplotlib.pyplot as plt
+
+_global_ollama_client = None
+
+def get_ollama_async_client_instance():
+    global _global_ollama_client
+    if _global_ollama_client is None:
+        # set OLLAMA_HOST or pass in host="http://127.0.0.1:11434"
+        _global_ollama_client = AsyncClient()  # Adjust base URL if necessary        
+    return _global_ollama_client            
 
 
 class SegNode:
@@ -213,7 +223,13 @@ EMBEDDINGS_ENDPOINT = "https://api.openai.com/v1/embeddings"
 
         return leaves
 
-    async def get_embeddings(self, chunks, model="text-embedding-ada-002"):
+
+    def get_embeddings(self, chunks):
+        return self.ollama_embeddings(chunks)
+        
+    
+    async def openai_embeddings(self, chunks, model="text-embedding-ada-002"):
+        ''' Retrieve embeddings using OpenAI '''
 
         task_params = json.dumps({"model": model, "input": chunks})
         # print(task_params)
@@ -236,6 +252,24 @@ EMBEDDINGS_ENDPOINT = "https://api.openai.com/v1/embeddings"
                 obj = await response.json()
                 return [entry["embedding"] for entry in obj["data"]]
 
+
+    async def ollama_embeddings(self, chunks: list[str], model="nomic-embed-text") -> np.ndarray:
+        ''' Retrieve embeddings using Ollama '''
+        # Initialize the Ollama client
+        ollama_client = get_ollama_async_client_instance()
+
+        # Send the request to Ollama for embeddings
+        response = await ollama_client.embed(
+            model=model,  
+            input=chunks
+        )
+
+        # Extract embeddings from the response
+        embeddings = response['embeddings']
+
+        return embeddings
+
+            
     def embed_blocks(self):
 
         logger.info(f"Submitting blocks to OpenAI")
