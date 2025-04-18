@@ -50,3 +50,35 @@ segmenter = TreeSeg(configs=config, entries=transcript)
 segments = segmenter.segment_meeting(20)
 
 print(segments)
+
+
+def update_transcript_with_topics(transcript, topic_transitions):
+    """
+    Updates transcript entries with topic numbers based on topic transitions.
+    
+    Args:
+        transcript: List of transcript entry dictionaries
+        topic_transitions: List of 0s and 1s indicating topic continuation (0) or new topic (1)
+    
+    Returns:
+        Updated transcript with topic field added to each entry
+    """
+    if len(transcript) != len(topic_transitions):
+        raise ValueError("Length of transcript and topic_transitions must match")
+    
+    current_topic = 0
+    for i, (entry, transition) in enumerate(zip(transcript, topic_transitions)):
+        if transition == 1:
+            current_topic += 1
+        entry['topic'] = current_topic
+    
+    return transcript
+
+
+transcript_w_topics = update_transcript_with_topics(transcript, segments)
+
+print(transcript_w_topics)
+
+
+with open("out.json", 'w') as f:
+    json.dump(transcript_w_topics, f, indent=4)
