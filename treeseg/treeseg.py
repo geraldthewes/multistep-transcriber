@@ -15,11 +15,11 @@ import matplotlib.pyplot as plt
 
 _global_ollama_client = None
 
-def get_ollama_async_client_instance():
+def get_ollama_async_client_instance(embeddings_endpoint):
     global _global_ollama_client
     if _global_ollama_client is None:
         # set OLLAMA_HOST or pass in host="http://127.0.0.1:11434"
-        _global_ollama_client = AsyncClient()  # Adjust base URL if necessary        
+        _global_ollama_client = AsyncClient(host=embeddings_endpoint)  # Adjust base URL if necessary        
     return _global_ollama_client            
 
 
@@ -159,14 +159,15 @@ class TreeSeg:
         "Content-Type": "application/json",
         "Authorization": "Bearer " + os.getenv("OPENAI_API_KEY"),
     }
-EMBEDDINGS_ENDPOINT = "https://api.openai.com/v1/embeddings"
 
     config =   {
         "MIN_SEGMENT_SIZE": 2,
         "LAMBDA_BALANCE": 0,
         "UTTERANCE_EXPANSION_WIDTH": 2,
-        "EMBEDDINGS_HEADERS": EMBEDDINGS_HEADERS,
-        "EMBEDDINGS_ENDPOINT": EMBEDDINGS_ENDPOINT,
+        "EMBEDDINGS_HEADERS": EMBEDDINGS_HEADERS,  # For OpenAI
+        "EMBEDDINGS_TYPE": "ollama",  # or "openai"
+        "EMBEDDINGS_MODEL": "nomic-embed-text",  # or "text-embedding-ada-002" for openai         
+        "EMBEDDINGS_ENDPOINT": os.getenv("OLLAMA_HOST","")   # "https://api.openai.com/v1/embeddings" 
     }
 
     segmenter = TreeSeg(configs=config, entries=transcript)
@@ -225,7 +226,14 @@ EMBEDDINGS_ENDPOINT = "https://api.openai.com/v1/embeddings"
 
 
     def get_embeddings(self, chunks):
-        return self.ollama_embeddings(chunks)
+        embeddings_type = self.configs.get("EMBEDDINGS_TYPE", "ollama")
+        model = self.configs.get("EMBEDDINGS_MODEL")
+        if embeddings_type == "openai":
+            return self.openai_embeddings(chunks, model=model)
+        elif embeddings_type == "ollama":
+            return self.ollama_embeddings(chunks, model=model)
+        else:
+            raise ValueError(f"Unsupported EMBEDDINGS_TYPE: {embedding_type}")        
         
     
     async def openai_embeddings(self, chunks, model="text-embedding-ada-002"):
@@ -256,7 +264,7 @@ EMBEDDINGS_ENDPOINT = "https://api.openai.com/v1/embeddings"
     async def ollama_embeddings(self, chunks: list[str], model="nomic-embed-text") -> np.ndarray:
         ''' Retrieve embeddings using Ollama '''
         # Initialize the Ollama client
-        ollama_client = get_ollama_async_client_instance()
+        ollama_client = get_ollama_async_client_instance(self.configs["EMBEDDINGS_ENDPOINT"])
 
         # Send the request to Ollama for embeddings
         response = await ollama_client.embed(
@@ -272,7 +280,7 @@ EMBEDDINGS_ENDPOINT = "https://api.openai.com/v1/embeddings"
             
     def embed_blocks(self):
 
-        logger.info(f"Submitting blocks to OpenAI")
+        logger.info(f"Process blocks embeddings ")
 
         loop = asyncio.get_event_loop()
 
