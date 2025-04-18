@@ -240,13 +240,14 @@ class TreeSeg:
         blocks = []
 
         width = self.configs["UTTERANCE_EXPANSION_WIDTH"]
+        text_key = self.configs.get("TEXT_KEY", "composite")
 
         for i, entry in enumerate(entries):
 
             convo = []
 
             for idx in range(max(0, i - width), i + 1):
-                convo.append(entries[idx]["composite"])
+                convo.append(entries[idx].get(text_key,""))
 
             block = {"convo": "\n".join(convo), "index": i}
             block.update(entry)

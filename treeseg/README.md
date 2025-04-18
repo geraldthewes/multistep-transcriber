@@ -28,7 +28,8 @@ Originally from:  https://github.com/AugmendTech/treeseg.git
             "headers": "", # For OpenAI EMBEDDINGS_HEADERS
             "model": "nomic-embed-text",  # or "text-embedding-ada-002" for openai
             "endpoint": os.getenv("OLLAMA_HOST","")   # "https://api.openai.com/v1/embeddings"
-        }
+        },
+		"TEXT_KEY": "composite"
     }
 
     segmenter = TreeSeg(configs=config, entries=transcript)

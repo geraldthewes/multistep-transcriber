@@ -8,3 +8,4 @@ ollama
 sentence_transformers
 gliner
 setfit
+structlog
