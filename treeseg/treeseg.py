@@ -1,16 +1,12 @@
 import os
-
 import structlog
+import asyncio
 
 logger = structlog.get_logger()
 
 import json
-import asyncio
-import aiohttp
 import heapq
 import numpy as np
-from ollama import AsyncClient
-
 import matplotlib.pyplot as plt
 
 _global_ollama_client = None
@@ -143,38 +139,7 @@ class SegNode:
 
 class TreeSeg:
     '''
-    transcript = [
-    {'speaker': 'Alice', 'composite': 'Okay team, let\'s kick off the weekly sync. First agenda item is the Q3 roadmap planning.'},
-    {'speaker': 'Bob', 'composite': 'Right. I\'ve drafted the initial proposal based on the feedback from the product team.'},
-    {'speaker': 'Alice', 'composite': 'Great. Can you share the highlights? We need to finalize the key initiatives this week.'},
-    {'speaker': 'Bob', 'composite': 'Sure. The main pillars are customer acquisition, platform stability, and launching the new mobile feature.'},
-    {'speaker': 'Charlie', 'composite': 'On platform stability, I wanted to raise an issue regarding the recent deployment.'},
-    {'speaker': 'Charlie', 'composite': 'We saw a spike in error rates after the update went live Tuesday.'},
-    {'speaker': 'Alice', 'composite': 'Okay, thanks Charlie. Let\'s make that the next discussion point after Bob finishes the roadmap overview.'},
-    {'speaker': 'Bob', 'composite': 'Okay, back to the roadmap. For customer acquisition, we\'re planning two major campaigns...'}
-    # ... more utterances
-]
-
-    EMBEDDINGS_HEADERS = {
-        "Content-Type": "application/json",
-        "Authorization": "Bearer " + os.getenv("OPENAI_API_KEY"),
-    }
-
-    config =   {
-        "MIN_SEGMENT_SIZE": 2,
-        "LAMBDA_BALANCE": 0,
-        "UTTERANCE_EXPANSION_WIDTH": 2,
-        "EMBEDDINGS_HEADERS": EMBEDDINGS_HEADERS,  # For OpenAI
-        "EMBEDDINGS_TYPE": "ollama",  # or "openai"
-        "EMBEDDINGS_MODEL": "nomic-embed-text",  # or "text-embedding-ada-002" for openai         
-        "EMBEDDINGS_ENDPOINT": os.getenv("OLLAMA_HOST","")   # "https://api.openai.com/v1/embeddings" 
-    }
-
-    segmenter = TreeSeg(configs=config, entries=transcript)
-
-    segments = segmenter.segment_meeting(3)
-
-    
+    Perform transcript topic segmentation
     '''
 
     def __init__(self, configs, entries):
@@ -224,59 +189,12 @@ class TreeSeg:
 
         return leaves
 
-
-    def get_embeddings(self, chunks):
-        embeddings_type = self.configs.get("EMBEDDINGS_TYPE", "ollama")
-        model = self.configs.get("EMBEDDINGS_MODEL")
-        if embeddings_type == "openai":
-            return self.openai_embeddings(chunks, model=model)
-        elif embeddings_type == "ollama":
-            return self.ollama_embeddings(chunks, model=model)
-        else:
-            raise ValueError(f"Unsupported EMBEDDINGS_TYPE: {embedding_type}")        
-        
-    
-    async def openai_embeddings(self, chunks, model="text-embedding-ada-002"):
-        ''' Retrieve embeddings using OpenAI '''
-
-        task_params = json.dumps({"model": model, "input": chunks})
-        # print(task_params)
-
-        async with aiohttp.ClientSession(
-            headers=self.configs["EMBEDDINGS_HEADERS"]
-        ) as session:
-            async with session.post(
-                self.configs["EMBEDDINGS_ENDPOINT"],
-                data=task_params,
-                timeout=aiohttp.ClientTimeout(total=30),
-            ) as response:
-                # print(response)
-                if response.status != 200:
-                    print(await response.json())
-                    raise Exception(
-                        "EmbeddingRequestFailed", f"status={response.status}"
-                    )
-
-                obj = await response.json()
-                return [entry["embedding"] for entry in obj["data"]]
-
-
-    async def ollama_embeddings(self, chunks: list[str], model="nomic-embed-text") -> np.ndarray:
-        ''' Retrieve embeddings using Ollama '''
-        # Initialize the Ollama client
-        ollama_client = get_ollama_async_client_instance(self.configs["EMBEDDINGS_ENDPOINT"])
-
-        # Send the request to Ollama for embeddings
-        response = await ollama_client.embed(
-            model=model,  
-            input=chunks
-        )
-
-        # Extract embeddings from the response
-        embeddings = response['embeddings']
-
-        return embeddings
-
+    async def get_embeddings(self, chunks):
+        """Retrieve embeddings using the provided embeddings function."""
+        embeddings_config = self.configs.get("EMBEDDINGS")
+        return await embeddings_config.embeddings_func(
+            embeddings_config,
+            chunks)    
             
     def embed_blocks(self):
 
