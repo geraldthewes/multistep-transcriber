@@ -83,3 +83,9 @@ yt-dlp -o "%(id)s.%(ext)s" -S "res:720" https://www.youtube.com/live/FpC_Lp_Kq_0
 ffmpeg -i file.mkv -q:a 0 -map a audio_output.wav
 ```
 
+### Sentence merging
+
+```
+python -m spacy download en_core_web_sm
+python merge_transcript_segments.py   /mnt/data3/AI/data/Needham/2024-10-24.d/cache.raw_transcript /mnt/data3/AI/data/Needham/2024-10-24.d/cache.sentence_merge
+```

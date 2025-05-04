@@ -6,18 +6,17 @@ import os, sys
 import json
 import argparse
 
-
 from treeseg import TreeSeg, Embeddings, ollama_embeddings
 
 # Configuration
 embeddings_config = Embeddings(
-            embeddings_func = ollama_embeddings, # openai_embeddings
-            headers = {}, # forOpenAI
-            model =  "nomic-embed-text",  # or "text-embedding-ada-002" for openai         
-            endpoint = os.getenv("OLLAMA_HOST","")   # "https://api.openai.com/v1/embeddings"
+            embeddings_func=ollama_embeddings, # openai_embeddings
+            headers={}, # forOpenAI
+            model="nomic-embed-text",  # or "text-embedding-ada-002" for openai         
+            endpoint=os.getenv("OLLAMA_HOST", "")   # "https://api.openai.com/v1/embeddings"
 )
 
-config =   {
+config = {
         "MIN_SEGMENT_SIZE": 5,
         "LAMBDA_BALANCE": 0,
         "UTTERANCE_EXPANSION_WIDTH": 2,
@@ -30,6 +29,10 @@ config =   {
 parser = argparse.ArgumentParser(description='Break transcript into segments')
 parser.add_argument('--transcript-file', type=str, required=True, 
                    help='Path to JSON file containing the transcript')
+parser.add_argument('--output-file', type=str, default="out.json", 
+                   help='Path to JSON file to store output')
+parser.add_argument('--segments', type=int, default=20,
+                    help='Number of segments to break the transcript into (default: 20)')
 args = parser.parse_args()
 
 # Load transcript from JSON file
@@ -43,11 +46,9 @@ except json.JSONDecodeError:
     print(f"Error: Invalid JSON format in '{args.transcript_file}'")
     sys.exit(1)
 
-
-
 segmenter = TreeSeg(configs=config, entries=transcript)
 
-segments = segmenter.segment_meeting(20)
+segments = segmenter.segment_meeting(args.segments)
 
 print(segments)
 
@@ -77,8 +78,8 @@ def update_transcript_with_topics(transcript, topic_transitions):
 
 transcript_w_topics = update_transcript_with_topics(transcript, segments)
 
-print(transcript_w_topics)
+#print(transcript_w_topics)
 
 
-with open("out.json", 'w') as f:
+with open(args.output_file, 'w') as f:
     json.dump(transcript_w_topics, f, indent=4)
