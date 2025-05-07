@@ -14,7 +14,7 @@ if __name__ == "__main__":
         segments = json.load(f)
     
     # Merge transcript segments
-    merged_segments = merge_transcript_segments(segments)
+    merged_segments = merge_transcript_segments(args.input_file, segments)
     
     # Write merged segments to output file
     with open(args.output_file, 'w') as f:

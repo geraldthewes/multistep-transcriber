@@ -1,7 +1,10 @@
 import spacy
 from typing import List, Dict
 
-def merge_transcript_segments(segments: List[Dict[str, float]]) -> List[Dict[str, float]]:
+from .caching import cached_file, cached_file_object
+
+@cached_file_object('.sentence_merge')
+def merge_transcript_segments(video_path:str, segments: List[Dict[str, float]]) -> List[Dict[str, float]]:
     """
     Merge transcript segments into full sentences using spaCy for sentence tokenization.
     

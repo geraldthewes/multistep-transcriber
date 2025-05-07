@@ -36,32 +36,35 @@ class VideoTranscriber:
         print('Step 1: Initial transcription')
         raw_transcript = initial_transcription(video_path)
 
-        print('Step 2: Noun extraction')
-        noun_list = extract_nouns(video_path, raw_transcript)
+        print('Step 2: Merge Sentences')
+        merged_segments = merge_transcript_segments(video_path, raw_transcript)
+
+        print('Step 3: Noun extraction')
+        noun_list = extract_nouns(video_path, merged_segments)
         # print(noun_list)
         
-        print('Step 3: Transcript correction')
-        corrected_transcript = correct_transcript(video_path, raw_transcript, noun_list)
+        print('Step 4: Transcript correction')
+        corrected_transcript = correct_transcript(video_path, merged_segments, noun_list)
         # print(corrected_transcript)
         
-        print('Step 4: Speaker identification')
+        print('Step 5: Speaker identification')
         speaker_mapping = identify_speakers(video_path, corrected_transcript)
         #print(speaker_mapping)
 
-        print('Step 5: Merge transcript and diarization')
+        print('Step 6: Merge transcript and diarization')
         merged_transcript = merge_transcript_diarization(video_path, corrected_transcript,  speaker_mapping )
 
-        print('Step 6: Compress merged transcript')
+        print('Step 7: Compress merged transcript')
         compressed_transcript = compress_transcript(video_path, merged_transcript)
 
-        print('Step 7: Filter transcript by speaker introductions')
+        print('Step 8: Filter transcript by speaker introductions')
         speaker_introductions = find_introductions(video_path, compressed_transcript)                
 
-        print('Step 8: Extract persons from intro')
+        print('Step 9: Extract persons from intro')
         speaker_names = extract_persons(video_path, speaker_introductions)
         speakers = speaker_to_name(speaker_names)
 
-        print('Step 9: Map speaker names')
+        print('Step 10: Map speaker names')
         transcript_final = map_speakers(video_path, compressed_transcript, speakers)
         
         
