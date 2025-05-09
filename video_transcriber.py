@@ -52,7 +52,6 @@ class VideoTranscriber:
         print('Step 10: Map speaker names')
         transcript_final = map_speakers(video_path, compressed_transcript, speakers)
         
-        
         print('Step 10: Final formatting')
         transcript_formatted = format_transcript(video_path, transcript_final)
         transcript_markdown = format_markdown(video_path, transcript_final)        

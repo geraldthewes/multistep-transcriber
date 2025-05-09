@@ -1,6 +1,15 @@
 import os
 import json
 
+def get_cache_directory(video_path, file_ext):
+    base_name, _ = os.path.splitext(video_path)
+    cache_dir = base_name + '.d'
+    os.makedirs(cache_dir, exist_ok=True)
+    cache_file = os.path.join(cache_dir, 'cache' + file_ext)
+    return cache_file
+
+
+
 def cached_file(file_ext):
     """
     A decorator that caches the output of a function to a file.
@@ -13,11 +22,7 @@ def cached_file(file_ext):
     """
     def decorator(func):
         def wrapper(video_path, *args, **kwargs):
-            # Construct the cache file name
-            base_name, _ = os.path.splitext(video_path)
-            cache_dir = base_name + '.d'
-            os.makedirs(cache_dir, exist_ok=True)
-            cache_file = os.path.join(cache_dir, 'cache' + file_ext)
+            cache_file = get-cache_directory(video_path, file_ext)
 
             # Try to load from cache if it exists
             if os.path.exists(cache_file):
@@ -51,11 +56,7 @@ def cached_file_object(file_ext):
     """
     def decorator(func):
         def wrapper(video_path, *args, **kwargs):
-            # Construct the cache file name
-            base_name, _ = os.path.splitext(video_path)
-            cache_dir = base_name + '.d'
-            os.makedirs(cache_dir, exist_ok=True)
-            cache_file = os.path.join(cache_dir, 'cache' + file_ext)
+            cache_file = get-cache_directory(video_path, file_ext)            
 
             # Try to load from cache if it exists
             if os.path.exists(cache_file):
