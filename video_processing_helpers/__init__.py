@@ -9,3 +9,4 @@ from .standardize import correct_transcript
 from .transcription import initial_transcription
 from .helpers import merge_transcript_diarization, compress_transcript, speaker_to_name, map_speakers, format_transcript, format_markdown
 from .merge_sentences import merge_transcript_segments
+from .topic_segmentation import segment_topics
