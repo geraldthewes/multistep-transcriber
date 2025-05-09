@@ -1,7 +1,7 @@
 # This file makes Python treat the directory as a package.
 
 
-from .caching import cached_file, cached_file_object
+from .caching import cached_file, cached_file_object, clear_cache_directory
 from .diarization import  identify_speakers
 from .entities import extract_nouns, extract_persons
 from .introductions import find_introductions

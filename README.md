@@ -96,3 +96,8 @@ python merge_transcript_segments.py   /mnt/data3/AI/data/Needham/2024-10-24.d/ca
 ```
 python  topic_segment.py --transcript-file   /mnt/data3/AI/data/Needham/2024-10-24.d/cache.final --output-file=/mnt/data3/AI/data/Needham/2024-10-24.d/cache.topics --segments=512
 ```
+### Unit Tests
+
+```
+python -m unittest test_transcriber.py
+```

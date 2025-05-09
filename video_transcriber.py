@@ -49,13 +49,12 @@ class VideoTranscriber:
         speaker_names = extract_persons(video_path, speaker_introductions)
         speakers = speaker_to_name(speaker_names)
 
-        print('Step 10: Map speaker names')
+        print('Step 10: Map speaker fnames')
         transcript_final = map_speakers(video_path, compressed_transcript, speakers)
         
-        print('Step 10: Final formatting')
+        print('Step 11: Final formatting')
         transcript_formatted = format_transcript(video_path, transcript_final)
         transcript_markdown = format_markdown(video_path, transcript_final)        
         
-        
-        return transcript_formatted
+        return transcript_final
 
