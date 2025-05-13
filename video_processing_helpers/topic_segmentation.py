@@ -1,6 +1,9 @@
 from treeseg.treeseg import TreeSeg
 
-def segment_topics(entries: list, config: dict, max_segments: int) -> list:
+from .caching import cached_file_object
+
+@cached_file_object('.topics')
+def segment_topics(video_path: str, entries: list, config: dict, max_segments: int) -> list:
     """
     Process transcript entries and return with topic annotations
 

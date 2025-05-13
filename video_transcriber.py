@@ -57,7 +57,7 @@ class VideoTranscriber:
         if not self.topic_config:
             print('No topic segmentation configuration. Skipping topic segmentation')
             return transcript
-        processed_transcript = segment_topics(transcript, self.topic_config, max_topics)
+        processed_transcript = segment_topics(video_path, transcript, self.topic_config, max_topics)
         return processed_transcript
     
     def format_transcript(self, video_path: str, transcript: list) -> None:
