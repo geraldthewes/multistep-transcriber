@@ -8,11 +8,9 @@ import argparse
 from  video_processing_helpers import *
     
 class VideoTranscriber:
-    def __init__(self):
+    def __init__(self, topic_config=None):
         # Initialize models
-        self.people_intro_model_name = "gerald29/setfit-bge-small-v1.5-sst2-8-shot-introduction"
-        self.people_intro_model = None
-
+        self.topic_config = topic_config
 
     def transcribe_video(self, video_path: str) -> list:
         """Main function to run the complete transcription process"""
@@ -54,8 +52,16 @@ class VideoTranscriber:
         
         return transcript_final
 
+    def topics(self, video_path: str, transcript: list, max_topics) -> list:
+        """Break transcript into topics"""
+        if not self.topic_config:
+            print('No topic segmentation configuration. Skipping topic segmentation')
+            return transcript
+        processed_transcript = segment_topics(transcript, self.topic_config, max_topics)
+        return processed_transcript
+    
     def format_transcript(self, video_path: str, transcript: list) -> None:
-        """Main function to run the complete transcription process"""
+        """Format the transcript"""
 
         transcript_formatted = format_transcript(video_path, transcript)
         transcript_markdown = format_markdown(video_path, transcript)        

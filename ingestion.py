@@ -6,6 +6,23 @@ import logging
 import argparse
 
 from video_transcriber import VideoTranscriber
+from treeseg import Embeddings, ollama_embeddings
+
+# Build config
+# Configuration
+embeddings_config = Embeddings(
+    embeddings_func=ollama_embeddings, # openai_embeddings
+    headers={}, # forOpenAI
+    model="nomic-embed-text",  # or "text-embedding-ada-002" for openai         
+    endpoint=os.getenv("OLLAMA_HOST", "")   # "https://api.openai.com/v1/embeddings"
+)
+config = {
+    "MIN_SEGMENT_SIZE": 5,
+    "LAMBDA_BALANCE": 0,
+    "UTTERANCE_EXPANSION_WIDTH": 2,
+    "EMBEDDINGS": embeddings_config,
+    "TEXT_KEY": "transcript"
+}
 
 
 def main():
@@ -13,6 +30,8 @@ def main():
     
     # Add arguments
     parser.add_argument("video_path", type=str, help="Path to the video file")
+    parser.add_argument('--max-topics', type=int, default=10,
+                      help='Maximum number of topics to create, 0 to skip')
     
     # Parse arguments
     args = parser.parse_args()
@@ -24,9 +43,12 @@ def main():
         sys.exit(1)
 
     print('Setup')
-    transcriber = VideoTranscriber()
+    transcriber = VideoTranscriber(config)
     print(f'Transcribe {video_path}')
     result = transcriber.transcribe_video(video_path)
+    if args.max_topics:
+        print(f'Break into topics {video_path}')    
+        result =transcriber.topics(video_path, result, args.max_topics)    
     transcriber.format_transcript(video_path, result)
 
 
