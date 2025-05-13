@@ -14,7 +14,7 @@ class VideoTranscriber:
         self.people_intro_model = None
 
 
-    def transcribe_video(self, video_path: str) -> str:
+    def transcribe_video(self, video_path: str) -> list:
         """Main function to run the complete transcription process"""
 
         
@@ -52,9 +52,11 @@ class VideoTranscriber:
         print('Step 10: Map speaker fnames')
         transcript_final = map_speakers(video_path, compressed_transcript, speakers)
         
-        print('Step 11: Final formatting')
-        transcript_formatted = format_transcript(video_path, transcript_final)
-        transcript_markdown = format_markdown(video_path, transcript_final)        
-        
         return transcript_final
 
+    def format_transcript(self, video_path: str, transcript: list) -> None:
+        """Main function to run the complete transcription process"""
+
+        transcript_formatted = format_transcript(video_path, transcript)
+        transcript_markdown = format_markdown(video_path, transcript)        
+        

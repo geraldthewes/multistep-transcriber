@@ -27,11 +27,8 @@ def main():
     transcriber = VideoTranscriber()
     print(f'Transcribe {video_path}')
     result = transcriber.transcribe_video(video_path)
-    
-    # Save output
-    #with open("transcription.md", "w") as f:
-    #    f.write(result)
-    #print("Transcription complete. Output saved to transcription.md")
+    transcriber.format_transcript(video_path, result)
+
 
     
 if __name__ == "__main__":
