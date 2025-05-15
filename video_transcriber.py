@@ -24,7 +24,6 @@ class VideoTranscriber:
 
         print('Step 3: Noun extraction')
         noun_list = extract_nouns(video_path, merged_segments)
-        # print(noun_list)
         
         print('Step 4: Transcript correction')
         corrected_transcript = correct_transcript(video_path, merged_segments, noun_list)

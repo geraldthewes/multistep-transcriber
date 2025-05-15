@@ -8,6 +8,7 @@ from faster_whisper import WhisperModel
 from sentence_transformers import SentenceTransformer, util
 
 from .caching import cached_file, cached_file_object
+from .helpers import flatten_texts
 
 _noun_correction_model = None
 
@@ -85,7 +86,7 @@ def standardize_nouns_ai(transcript: list, noun_list: list):
 def correct_transcript(video_path: str, raw_transcript: list, nouns: str) -> str:
     """Correct transcript using LLM and noun list"""
     try:
-        nouns_list = nouns.split(',')
+        nouns_list = flatten_texts(nouns)
         return standardize_nouns_ai(raw_transcript, nouns_list)
     except Exception as e:
         print(f"Error correcting transcript: {e}")

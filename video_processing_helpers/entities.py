@@ -39,13 +39,7 @@ def group_by_label(data: List[List[Dict[str, Any]]]) -> Dict[str, List[Dict[str,
 
     return result
 
-def flatten_texts(input_dict: Dict[str, List[Dict[str, Any]]]) -> List[str]:
-    ''' Just return the nouns '''
-    texts = []
-    for label in input_dict:
-        for item in input_dict[label]:
-            texts.append(item['text'])
-    return texts
+
 
 ''' Merge entities, pick highest prob'''
 def merge_similar_texts(data: Dict[str, List[Dict[str, Any]]]) -> str:
@@ -63,7 +57,8 @@ def merge_similar_texts(data: Dict[str, List[Dict[str, Any]]]) -> str:
             score = entry['score']
 
             # remove generic entities
-            if text.lower() in ['he','she', 'I', 'me', 'her','him','they', 'we', 'us', 'one']:
+            if text.lower() in ['he','she', 'i', 'me', 'her','him','they', 'we', 'us', 'one', 'you',
+                                'today', 'tonight', 'this year', 'last month', 'last year', 'yesterday', 'tomorrow']:
                 continue
             # If the text is already in the unique_entries, update the score if it's higher
             if text in unique_entries:
@@ -75,26 +70,25 @@ def merge_similar_texts(data: Dict[str, List[Dict[str, Any]]]) -> str:
         # Convert the unique_entries dictionary back to a list of dictionaries
         result[label] = [{'text': text, 'score': score} for text, score in unique_entries.items()]
 
-    # Now flatten the result
-    return ','.join(flatten_texts(result))
+    return result
 
         
-def extract_entities_simple(video_path: str, labels: list, transcript: str) -> list:
-    """Extract proper nouns and technical terms from master document"""
-    try:
-        entity_model = get_entity_model()
-        transcript_sentences = [item['transcript'] for item in transcript]            
-        # Perform entity prediction
-        entities = entity_model.batch_predict_entities(transcript_sentences, labels, threshold=0.5)
-        return entities
-    except Exception as e:
-        print(f"Error extracting nouns: {e}")
-        traceback.print_exc()            
-        return None
+# def extract_entities_simple(video_path: str, labels: list, transcript: str) -> list:
+#     """Extract proper nouns and technical terms from master document"""
+#     try:
+#         entity_model = get_entity_model()
+#         transcript_sentences = [item['transcript'] for item in transcript]            
+#         # Perform entity prediction
+#         entities = entity_model.batch_predict_entities(transcript_sentences, labels, threshold=0.5)
+#         return entities
+#     except Exception as e:
+#         print(f"Error extracting nouns: {e}")
+#         traceback.print_exc()            
+#         return None
 
 # batch the requests to avoid memory issues
 batch_size =  500
-threshold = 0.5
+threshold = 0.65
 
 def extract_entities(video_path: str, labels: list, transcript: list, batch_size: int = 100) -> list or None:
     """
@@ -190,7 +184,7 @@ def extract_entities(video_path: str, labels: list, transcript: list, batch_size
         traceback.print_exc()
         return None # Return None on critical failure
     
-@cached_file('.nouns')
+@cached_file_object('.nouns')
 def extract_nouns(video_path: str, transcript: str) -> list:
     labels = ["Person", "Organizations", "Date", "Positions", "Locations"]
     print('Extract Entities')

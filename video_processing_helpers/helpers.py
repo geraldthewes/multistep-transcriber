@@ -142,4 +142,12 @@ def map_speakers(video_path: str, transcripts: list, speaker_to_name: dict):
     return  [transcript | {'speaker_name': speaker_to_name.get(transcript['speaker'],transcript['speaker'])} for transcript in transcripts]
 
 
+def flatten_texts(input_dict: Dict[str, List[Dict[str, Any]]]) -> List[str]:
+    ''' Just return the nouns '''
+    texts = []
+    for label in input_dict:
+        for item in input_dict[label]:
+            texts.append(item['text'])
+    return texts
+
     
