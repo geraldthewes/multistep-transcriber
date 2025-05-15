@@ -24,7 +24,7 @@ def format_transcript(video_path: str, transcripts: str) -> str:
         return transcript
 
 @cached_file('.md')
-def format_markdown(video_path: str, transcripts: List[Dict[str, Any]]) -> str:
+def format_markdown(video_path: str, transcripts: List[Dict[str, Any]], nouns_list: Dict[str, List[Dict[str, Any]]]) -> str:
     """Formats the final transcript as Markdown."""
     try:
         formatted = "# Transcribed Video\n\n"
@@ -50,6 +50,13 @@ def format_markdown(video_path: str, transcripts: List[Dict[str, Any]]) -> str:
 
             # Add the transcript text, indented slightly
             formatted += f"- {transcript_text}\n"
+
+        formatted += f'\n## Entities mentionned in this meeting transcript'
+        for label in nouns_list:
+            formatted += f'### {label}\n'
+            for noun in nouns_list[label]:
+                formatted += f"- {noun['text']}\n"
+        
         return formatted
     except Exception as e:
         print(f"Error formatting transcript: {e}")

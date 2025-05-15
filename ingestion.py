@@ -45,11 +45,11 @@ def main():
     print('Setup')
     transcriber = VideoTranscriber(config)
     print(f'Transcribe {video_path}')
-    result = transcriber.transcribe_video(video_path)
+    result, nouns_list = transcriber.transcribe_video(video_path)
     if args.max_topics:
         print(f'Break into topics {video_path}')    
         result =transcriber.topics(video_path, result, args.max_topics)    
-    transcriber.format_transcript(video_path, result)
+    transcriber.format_transcript(video_path, result, nouns_list)
 
 
     

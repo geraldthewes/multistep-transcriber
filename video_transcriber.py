@@ -4,6 +4,7 @@ import json
 import torch
 import logging
 import argparse
+from typing import List, Dict, Any
 
 from  video_processing_helpers import *
     
@@ -23,10 +24,10 @@ class VideoTranscriber:
         merged_segments = merge_transcript_segments(video_path, raw_transcript)
 
         print('Step 3: Noun extraction')
-        noun_list = extract_nouns(video_path, merged_segments)
+        nouns_list = extract_nouns(video_path, merged_segments)
         
         print('Step 4: Transcript correction')
-        corrected_transcript = correct_transcript(video_path, merged_segments, noun_list)
+        corrected_transcript = correct_transcript(video_path, merged_segments, nouns_list)
         # print(corrected_transcript)
         
         print('Step 5: Speaker identification')
@@ -49,7 +50,7 @@ class VideoTranscriber:
         print('Step 10: Map speaker fnames')
         transcript_final = map_speakers(video_path, compressed_transcript, speakers)
         
-        return transcript_final
+        return transcript_final, nouns_list
 
     def topics(self, video_path: str, transcript: list, max_topics) -> list:
         """Break transcript into topics"""
@@ -59,9 +60,9 @@ class VideoTranscriber:
         processed_transcript = segment_topics(video_path, transcript, self.topic_config, max_topics)
         return processed_transcript
     
-    def format_transcript(self, video_path: str, transcript: list) -> None:
+    def format_transcript(self, video_path: str, transcript: list, nouns_list:  Dict[str, List[Dict[str, Any]]]) -> None:
         """Format the transcript"""
 
         transcript_formatted = format_transcript(video_path, transcript)
-        transcript_markdown = format_markdown(video_path, transcript)        
+        transcript_markdown = format_markdown(video_path, transcript, nouns_list)        
         
