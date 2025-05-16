@@ -23,14 +23,14 @@ class VideoTranscriber:
         print('Step 2: Merge Sentences')
         merged_segments = merge_transcript_segments(video_path, raw_transcript)
 
-        print('Step 3: Noun extraction')
+        print('Step 3: Entity extraction')
         nouns_list = extract_nouns(video_path, merged_segments)
         
         print('Step 4: Transcript correction')
         corrected_transcript = correct_transcript(video_path, merged_segments, nouns_list)
         # print(corrected_transcript)
         
-        print('Step 5: Speaker identification')
+        print('Step 5: Diarization / Speaker identification')
         speaker_mapping = identify_speakers(video_path, corrected_transcript)
         #print(speaker_mapping)
 
@@ -41,13 +41,14 @@ class VideoTranscriber:
         compressed_transcript = compress_transcript(video_path, merged_transcript)
 
         print('Step 8: Filter transcript by speaker introductions')
-        speaker_introductions = find_introductions(video_path, compressed_transcript)                
+        # Use raw transcript as sentence merge can cause timing mismatch        
+        speaker_introductions = find_introductions(video_path, raw_transcript)                
 
         print('Step 9: Extract persons from intro')
         speaker_names = extract_persons(video_path, speaker_introductions)
         speakers = speaker_to_name(speaker_names)
 
-        print('Step 10: Map speaker fnames')
+        print('Step 10: Map speaker names')
         transcript_final = map_speakers(video_path, compressed_transcript, speakers)
         
         return transcript_final, nouns_list
