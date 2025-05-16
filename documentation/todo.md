@@ -1,2 +1,3 @@
-- Also run soundex on the entities
-- Investigate speaker mapping
+[x] Also run soundex on the entities
+[ ] Investigate speaker mapping
+[ ] Generate topic headers

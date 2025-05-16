@@ -92,18 +92,22 @@ def merge_similar_texts(data: Dict[str, List[Dict[str, Any]]]) -> Dict[str, List
     # Iterate through each label in the input data
     for label, entries in data.items():
         print(label)
+        if label != "Person":
+            continue
         # Process each entry in the list of entries for the current label
-        entities = "\n- ".join(entity["text"] for entity in entries)
-        print(entities)
+        entities = "- " + "\n- ".join(entity["text"] for entity in entries)
+        #print(entities)
 
         response = chat(model=SIMILAR_NAMES_MODEL,
                         messages=[{'role':'user', 'content':prompt + entities}],
                         format=NounList.model_json_schema())
 
-        print(response.message.content)
-        reduced_entrities = NounList.model_validate_json(response.message.content)
-        print(reduced_entrities)
-
+        #print(response.message.content)
+        reduced_entities = NounList.model_validate_json(response.message.content)
+        #print(reduced_entities)
+        data[label] = [{'text': text} for text in reduced_entities.nouns]
+        #print(data[label])
+    return data
 
 # def extract_entities_simple(video_path: str, labels: list, transcript: str) -> list:
 #     """Extract proper nouns and technical terms from master document"""
@@ -216,7 +220,7 @@ def extract_entities(video_path: str, labels: list, transcript: list, batch_size
         traceback.print_exc()
         return None # Return None on critical failure
     
-@cached_file_object('.nouns')
+@cached_file_object('.entities')
 def extract_nouns(video_path: str, transcript: str) -> list:
     labels = ["Person", "Organizations", "Date", "Positions", "Locations"]
     print('Extract Entities')
@@ -227,7 +231,7 @@ def extract_nouns(video_path: str, transcript: str) -> list:
     entities_merged = merge_duplicate_texts(entities_by_label)
     print('Reduce Entities')
     entities_cannonical = merge_similar_texts(entities_merged)    
-    return entities_merged
+    return entities_cannonical
 
 @cached_file_object('.speaker_names')
 def extract_persons(video_path: str, transcripts: str) -> list:
