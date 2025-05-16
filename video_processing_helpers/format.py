@@ -51,7 +51,7 @@ def format_markdown(video_path: str, transcripts: List[Dict[str, Any]], nouns_li
             # Add the transcript text, indented slightly
             formatted += f"- {transcript_text}\n"
 
-        formatted += f'\n## Entities mentionned in this meeting transcript'
+        formatted += f'\n## Entities mentionned in this meeting transcript\n'
         for label in nouns_list:
             formatted += f'### {label}\n'
             for noun in nouns_list[label]:

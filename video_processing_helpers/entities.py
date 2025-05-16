@@ -7,7 +7,12 @@ import math
 from typing import List, Dict, Any
 from gliner import GLiNER
 
+from ollama import chat
+from pydantic import BaseModel
+
 from .caching import cached_file, cached_file_object
+from .models import NounList
+
 
 _entity_model = None
 
@@ -42,7 +47,7 @@ def group_by_label(data: List[List[Dict[str, Any]]]) -> Dict[str, List[Dict[str,
 
 
 ''' Merge entities, pick highest prob'''
-def merge_similar_texts(data: Dict[str, List[Dict[str, Any]]]) -> str:
+def merge_duplicate_texts(data: Dict[str, List[Dict[str, Any]]]) -> Dict[str, List[Dict[str, Any]]]:
     # Initialize an empty dictionary to hold the results
     result = {}
 
@@ -57,7 +62,7 @@ def merge_similar_texts(data: Dict[str, List[Dict[str, Any]]]) -> str:
             score = entry['score']
 
             # remove generic entities
-            if text.lower() in ['he','she', 'i', 'me', 'her','him','they', 'we', 'us', 'one', 'you',
+            if text.lower() in ['he','she', 'i', 'me', 'her','him','they', 'we', 'us', 'one', 'you', 'somebody'
                                 'today', 'tonight', 'this year', 'last month', 'last year', 'yesterday', 'tomorrow']:
                 continue
             # If the text is already in the unique_entries, update the score if it's higher
@@ -72,7 +77,34 @@ def merge_similar_texts(data: Dict[str, List[Dict[str, Any]]]) -> str:
 
     return result
 
-        
+
+SIMILAR_NAMES_MODEL = "gemma3:27b"
+
+''' Merge entities, pick highest prob'''
+def merge_similar_texts(data: Dict[str, List[Dict[str, Any]]]) -> Dict[str, List[Dict[str, Any]]]: 
+    # Initialize an empty dictionary to hold the results
+    result = {}
+
+    prompt =  f'''You are a talented copy editor. I have this list below of person names from a transcript, some names might be the same person with different spelling. I need you to reduce the list, arranged alphabetically that select the most appropriate unique spelling for each person name in the original list. '''
+    
+
+
+    # Iterate through each label in the input data
+    for label, entries in data.items():
+        print(label)
+        # Process each entry in the list of entries for the current label
+        entities = "\n- ".join(entity["text"] for entity in entries)
+        print(entities)
+
+        response = chat(model=SIMILAR_NAMES_MODEL,
+                        messages=[{'role':'user', 'content':prompt + entities}],
+                        format=NounList.model_json_schema())
+
+        print(response.message.content)
+        reduced_entrities = NounList.model_validate_json(response.message.content)
+        print(reduced_entrities)
+
+
 # def extract_entities_simple(video_path: str, labels: list, transcript: str) -> list:
 #     """Extract proper nouns and technical terms from master document"""
 #     try:
@@ -192,7 +224,9 @@ def extract_nouns(video_path: str, transcript: str) -> list:
     print('Group Entities')
     entities_by_label = group_by_label(entities)
     print('Merge Entities')
-    entities_merged = merge_similar_texts(entities_by_label)
+    entities_merged = merge_duplicate_texts(entities_by_label)
+    print('Reduce Entities')
+    entities_cannonical = merge_similar_texts(entities_merged)    
     return entities_merged
 
 @cached_file_object('.speaker_names')
