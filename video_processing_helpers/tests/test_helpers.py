@@ -1,7 +1,7 @@
 import unittest
 
 
-from ..entities import map_entities_to_speakers
+from ..introductions import map_entities_to_speakers
 
 
 class TestTranscriberHelpers(unittest.TestCase):

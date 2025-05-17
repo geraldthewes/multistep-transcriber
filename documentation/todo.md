@@ -1,3 +1,6 @@
 [x] Also run soundex on the entities
-[ ] Investigate speaker mapping
+[X] Investigate speaker mapping
+[ ] Fix bug in speaker section
 [ ] Generate topic headers
+[ ] Create a MCP server in docker
+

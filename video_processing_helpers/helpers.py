@@ -120,23 +120,6 @@ def compress_transcript(video_path: str, entries: list):
         
 
 
-def speaker_to_name(introductions: str):
-    # Initialize an empty dictionary for the result
-    result = {}
-
-    # Iterate over each entry in the list
-    for item in introductions:
-        speaker_key = item['matched_speaker']
-        speaker_value = item['speaker_name']
-
-        # If the speaker is UNKNOWN, set the value to UNKNOWN
-        if speaker_key == "UNKNOWN":
-            speaker_value = "UNKNOWN"
-
-        # Add the mapping to the result dictionary
-        result[speaker_key] = speaker_value
-    return result
-
 @cached_file_object('.final')    
 def map_speakers(video_path: str, transcripts: list, speaker_to_name: dict):
     return  [transcript | {'speaker_name': speaker_to_name.get(transcript['speaker'],transcript['speaker'])} for transcript in transcripts]
