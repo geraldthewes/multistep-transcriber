@@ -126,7 +126,7 @@ def speaker_to_name(introductions: str):
 
     # Iterate over each entry in the list
     for item in introductions:
-        speaker_key = item['speaker']
+        speaker_key = item['matched_speaker']
         speaker_value = item['speaker_name']
 
         # If the speaker is UNKNOWN, set the value to UNKNOWN

@@ -126,13 +126,12 @@ def merge_similar_texts(data: Dict[str, List[Dict[str, Any]]]) -> Dict[str, List
 batch_size =  500
 threshold = 0.65
 
-def extract_entities(video_path: str, labels: list, transcript: list, batch_size: int = 100) -> list or None:
+def extract_entities(labels: list, transcript: list, batch_size: int = 100) -> list or None:
     """
     Extract proper nouns and technical terms from the transcript in batches
     to avoid memory issues with large transcripts.
 
     Args:
-        video_path (str): Path to the video file (potentially used for logging or context).
         labels (list): List of entity labels to predict (e.g., ['PERSON', 'ORG', 'TECH TERM']).
         transcript (list): A list of dictionaries, where each dict is expected to have
                            a 'transcript' key containing a sentence or segment of text.
@@ -224,7 +223,7 @@ def extract_entities(video_path: str, labels: list, transcript: list, batch_size
 def extract_nouns(video_path: str, transcript: str) -> list:
     labels = ["Person", "Organizations", "Date", "Positions", "Locations"]
     print('Extract Entities')
-    entities =  extract_entities(video_path, labels, transcript)
+    entities =  extract_entities(labels, transcript)
     print('Group Entities')
     entities_by_label = group_by_label(entities)
     print('Merge Entities')
@@ -233,23 +232,25 @@ def extract_nouns(video_path: str, transcript: str) -> list:
     entities_cannonical = merge_similar_texts(entities_merged)    
     return entities_cannonical
 
-@cached_file_object('.speaker_names')
-def extract_persons(video_path: str, transcripts: str) -> list:
+
+def extract_persons(introductions: str) -> list:
+    ''' Just extract person name from introductions, and add it to it's own field '''
     labels = ["Person"]
-    if not transcripts:
+    if not introductions:
         return []
-    entities = extract_entities(video_path, labels, transcripts)
-    print(entities)
+    entities = extract_entities(labels, introductions)
+    # print(entities)
     speaker_names=[]
     for introduction in entities:
         name = [item['text'] for item in introduction]
         if name:
             speaker_names.append(name[0])
-    speakers = [transcript | {'speaker_name': name} for transcript, name in zip(transcripts, speaker_names)]
+    speakers = [transcript | {'speaker_name': name} for transcript, name in zip(introductions, speaker_names)]
     return speakers
 
-
-def map_entities_to_speakers(ner_data, diarization_data, margin=0.5, target_label="Person"):
+# TODO. Does not belong in this module. I does a ampping, not NER
+@cached_file_object('.speaker_names')
+def map_entities_to_speakers(video_path: str, ner_data, diarization_data, margin=0.5):
     """
     Maps entities (especially persons) from NER data to speakers from diarization data
     based on overlapping time intervals, allowing for a specified margin.
@@ -264,7 +265,6 @@ def map_entities_to_speakers(ner_data, diarization_data, margin=0.5, target_labe
         margin (float): A time margin (in seconds) to allow for slight discrepancies
                         in start/end times. When checking for a match, the speaker's
                         segment is conceptually expanded by this margin.
-        target_label (str): The label of the entities to process (e.g., "Person").
 
     Returns:
         list: A list of augmented entity dictionaries. Each dictionary corresponding
@@ -275,52 +275,43 @@ def map_entities_to_speakers(ner_data, diarization_data, margin=0.5, target_labe
     """
     results = []
 
-    for entity_list_item in ner_data:
-        if not entity_list_item:  # Skip empty inner lists
-            continue
-        entity = entity_list_item[0] # Assuming one entity per inner list as per example
-
+    for entity in ner_data:
         # Create a copy to avoid modifying the original input
         processed_entity = entity.copy()
 
-        if processed_entity.get('label') == target_label:
-            entity_start = processed_entity['start']
-            entity_end = processed_entity['end']
+        entity_start = processed_entity['start']
+        entity_end = processed_entity['end']
 
-            best_match_speaker = None
-            max_overlap_duration = 0.0
+        best_match_speaker = None
+        max_overlap_duration = 0.0
 
-            for segment in diarization_data:
-                speaker_start = segment['start']
-                speaker_end = segment['end']
-                speaker_id = segment['speaker']
+        for segment in diarization_data:
+            speaker_start = segment['start']
+            speaker_end = segment['end']
+            speaker_id = segment['speaker']
 
-                # Condition for potential match: entity overlaps with expanded speaker segment
-                # Expanded speaker segment: [speaker_start - margin, speaker_end + margin]
-                # Overlap condition:
-                # max(entity_start, speaker_start - margin) < min(entity_end, speaker_end + margin)
-                
-                potential_match_start = speaker_start - margin
-                potential_match_end = speaker_end + margin
+            # Condition for potential match: entity overlaps with expanded speaker segment
+            # Expanded speaker segment: [speaker_start - margin, speaker_end + margin]
+            # Overlap condition:
+            # max(entity_start, speaker_start - margin) < min(entity_end, speaker_end + margin)
 
-                if max(entity_start, potential_match_start) < min(entity_end, potential_match_end):
-                    # This speaker segment is a candidate. Now calculate actual overlap.
-                    # Actual overlap is between [entity_start, entity_end] and [speaker_start, speaker_end]
-                    overlap_start = max(entity_start, speaker_start)
-                    overlap_end = min(entity_end, speaker_end)
-                    
-                    current_overlap_duration = round(max(0, overlap_end - overlap_start),2)
+            potential_match_start = speaker_start - margin
+            potential_match_end = speaker_end + margin
 
-                    if current_overlap_duration > max_overlap_duration:
-                        max_overlap_duration = current_overlap_duration
-                        best_match_speaker = speaker_id
-            
-            processed_entity['matched_speaker'] = best_match_speaker
-            processed_entity['overlap_duration'] = max_overlap_duration
-        else:
-            # For entities not matching target_label, we can optionally add default null values
-            processed_entity['matched_speaker'] = None
-            processed_entity['overlap_duration'] = 0.0
+            if max(entity_start, potential_match_start) < min(entity_end, potential_match_end):
+                # This speaker segment is a candidate. Now calculate actual overlap.
+                # Actual overlap is between [entity_start, entity_end] and [speaker_start, speaker_end]
+                overlap_start = max(entity_start, speaker_start)
+                overlap_end = min(entity_end, speaker_end)
+
+                current_overlap_duration = round(max(0, overlap_end - overlap_start),2)
+
+                if current_overlap_duration > max_overlap_duration:
+                    max_overlap_duration = current_overlap_duration
+                    best_match_speaker = speaker_id
+
+        processed_entity['matched_speaker'] = best_match_speaker
+        processed_entity['overlap_duration'] = max_overlap_duration
 
         results.append(processed_entity)
         

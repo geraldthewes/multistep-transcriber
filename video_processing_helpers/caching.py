@@ -50,13 +50,14 @@ def cached_file(file_ext):
     """
     def decorator(func):
         def wrapper(video_path, *args, **kwargs):
-            cache_file = get_cache_file(video_path, file_ext)
+            if video_path:
+                cache_file = get_cache_file(video_path, file_ext)
 
-            # Try to load from cache if it exists
-            if os.path.exists(cache_file):
-                print(f"Loading cached data from {cache_file}")
-                with open(cache_file, 'r', encoding='utf-8') as file:
-                    return file.read()
+                # Try to load from cache if it exists
+                if os.path.exists(cache_file):
+                    print(f"Loading cached data from {cache_file}")
+                    with open(cache_file, 'r', encoding='utf-8') as file:
+                        return file.read()
 
             # Compute the result since cache doesn't exist
             result = func(video_path, *args, **kwargs)
@@ -66,8 +67,9 @@ def cached_file(file_ext):
                 return f"{func.__name__} failed"
 
             # Save to cache
-            with open(cache_file, 'w', encoding='utf-8') as file:
-                file.write(result)
+            if video_path:
+                with open(cache_file, 'w', encoding='utf-8') as file:
+                    file.write(result)
 
             return result
 
@@ -84,20 +86,22 @@ def cached_file_object(file_ext):
     """
     def decorator(func):
         def wrapper(video_path, *args, **kwargs):
-            cache_file = get_cache_file(video_path, file_ext)            
+            if video_path:
+                cache_file = get_cache_file(video_path, file_ext)            
 
-            # Try to load from cache if it exists
-            if os.path.exists(cache_file):
-                print(f"Loading cached data from {cache_file}")
-                with open(cache_file, 'r', encoding='utf-8') as file:
-                    return json.load(file)
+                # Try to load from cache if it exists
+                if os.path.exists(cache_file):
+                    print(f"Loading cached data from {cache_file}")
+                    with open(cache_file, 'r', encoding='utf-8') as file:
+                        return json.load(file)
 
             # Compute the result since cache doesn't exist
             result = func(video_path, *args, **kwargs)
 
             # Save to cache
-            with open(cache_file, 'w', encoding='utf-8') as file:
-                json.dump(result, file, ensure_ascii=False, indent=4)
+            if video_path:
+                with open(cache_file, 'w', encoding='utf-8') as file:
+                    json.dump(result, file, ensure_ascii=False, indent=4)
 
             return result
         return wrapper

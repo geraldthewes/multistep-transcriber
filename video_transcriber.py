@@ -44,9 +44,15 @@ class VideoTranscriber:
         # Use raw transcript as sentence merge can cause timing mismatch        
         speaker_introductions = find_introductions(video_path, raw_transcript)                
 
-        print('Step 9: Extract persons from intro')
-        speaker_names = extract_persons(video_path, speaker_introductions)
-        speakers = speaker_to_name(speaker_names)
+        # Move logic to a function so this remains one call
+        print('Step 9: Extract persons from introductions')
+        # Create mapping betyween person name and diarization.
+        # first extract name from introductions
+        speaker_names = extract_persons(speaker_introductions)
+        # Now map name to diarization
+        speakers_diarization = map_entities_to_speakers(video_path, speaker_names, speaker_mapping)
+        # Now create map of speaker to speaker_name
+        speakers = speaker_to_name(speakers_diarization)
 
         print('Step 10: Map speaker names')
         transcript_final = map_speakers(video_path, compressed_transcript, speakers)

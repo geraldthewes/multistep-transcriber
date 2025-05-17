@@ -16,10 +16,10 @@ class TestTranscriberHelpers(unittest.TestCase):
         ]
 
         ner_output = [
-            [{'start': 5, 'end': 8, 'text': 'Doug', 'label': 'Person', 'score': 0.97}],
-            [{'start': 17.2, 'end': 20, 'text': 'Patrick', 'label': 'Person', 'score': 0.87}],
-            [{'start': 35, 'end': 40, 'text': 'Bob', 'label': 'Person', 'score': 0.90}],
-            [{'start': 60, 'end': 65, 'text': 'Alice Wonderland', 'label': 'Person', 'score': 0.99}] 
+            {'start': 5, 'end': 8, 'text': 'Doug', 'label': 'Person', 'score': 0.97},
+            {'start': 17.2, 'end': 20, 'text': 'Patrick', 'label': 'Person', 'score': 0.87},
+            {'start': 35, 'end': 40, 'text': 'Bob', 'label': 'Person', 'score': 0.90},
+            {'start': 60, 'end': 65, 'text': 'Alice Wonderland', 'label': 'Person', 'score': 0.99}
         ]
         return diarization_output, ner_output
 
@@ -27,7 +27,7 @@ class TestTranscriberHelpers(unittest.TestCase):
     def test_map_entities_to_speakers_margin_1s(self):
         # print("--- With Margin 1.0s ---")            
         diarization_output, ner_output = self.data_map_entities_to_speakers()
-        mapped_data_margin = map_entities_to_speakers(ner_output, diarization_output, margin=1.0)
+        mapped_data_margin = map_entities_to_speakers(None, ner_output, diarization_output, margin=1.0)
         #for item in mapped_data_margin:
         #    print(item)
         expected_result = [
@@ -41,7 +41,7 @@ class TestTranscriberHelpers(unittest.TestCase):
     def test_map_entities_to_speakers_margin_0_2s(self):
         # print("--- With Margin 0.2s ---")            
         diarization_output, ner_output = self.data_map_entities_to_speakers()
-        mapped_data_margin = map_entities_to_speakers(ner_output, diarization_output, margin=0.2)
+        mapped_data_margin = map_entities_to_speakers(None, ner_output, diarization_output, margin=0.2)
         #for item in mapped_data_margin:
         #    print(item)
         expected_result = [
@@ -55,13 +55,13 @@ class TestTranscriberHelpers(unittest.TestCase):
 
     def test_map_entities_to_speakers_margin_exact(self):
         ner_exact_match = [
-            [{'start': 55.0, 'end': 60.0, 'text': 'Exact Matcher', 'label': 'Person', 'score': 0.9}]
+            {'start': 55.0, 'end': 60.0, 'text': 'Exact Matcher', 'label': 'Person', 'score': 0.9}
             ]
         diarization_exact_match = [
             {"start": 55.0, "end": 60.0, "speaker": "SPEAKER_EXACT"}
             ]
         # print("\n--- Exact Match Test ---")            
-        mapped_exact = map_entities_to_speakers(ner_exact_match, diarization_exact_match, margin=0.1)
+        mapped_exact = map_entities_to_speakers(None, ner_exact_match, diarization_exact_match, margin=0.1)
         for item in mapped_exact:
             print(item)
         expected_result = {'start': 55.0, 'end': 60.0, 'text': 'Exact Matcher', 'label': 'Person', 'score': 0.9, 'matched_speaker': 'SPEAKER_EXACT', 'overlap_duration': 5.0}
@@ -73,12 +73,12 @@ class TestTranscriberHelpers(unittest.TestCase):
     def test_map_entities_to_speakers_margin_margin(self):    
         ''' Test case: Entity slightly outside, but within margin '''
         ner_outside_margin = [
-        [{'start': 72.0, 'end': 75.0, 'text': 'Edge Case', 'label': 'Person', 'score': 0.9}] 
+        {'start': 72.0, 'end': 75.0, 'text': 'Edge Case', 'label': 'Person', 'score': 0.9}
         ]
         diarization_exact_match = [
             {"start": 55.0, "end": 71.0, "speaker": "SPEAKER"}
         ]        
-        mapped_outside = map_entities_to_speakers(ner_outside_margin, diarization_exact_match, margin=2.0)
+        mapped_outside = map_entities_to_speakers(None, ner_outside_margin, diarization_exact_match, margin=2.0)
         print("\n--- Edge Case (within margin) Test ---")
         for item in mapped_outside:
              print(item) 
@@ -91,12 +91,12 @@ class TestTranscriberHelpers(unittest.TestCase):
     def test_map_entities_to_speakers_margin_outside(self):            
         ''' Test case: Entity completely outside any speaker segment even with margin '''
         ner_no_match = [
-        [{'start': 100.0, 'end': 105.0, 'text': 'No Speaker Here', 'label': 'Person', 'score': 0.9}]
+        {'start': 100.0, 'end': 105.0, 'text': 'No Speaker Here', 'label': 'Person', 'score': 0.9}
         ]
         diarization_output = [
             {"start": 55.0, "end": 60.0, "speaker": "SPEAKER"}
         ]        
-        mapped_no_match = map_entities_to_speakers(ner_no_match, diarization_output, margin=1.0)
+        mapped_no_match = map_entities_to_speakers(None, ner_no_match, diarization_output, margin=1.0)
         print("\n--- No Match Test ---")
         for item in mapped_no_match:
              print(item)
