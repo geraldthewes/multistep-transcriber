@@ -4,7 +4,7 @@ import unittest
 from ..introductions import map_entities_to_speakers
 
 
-class TestTranscriberHelpers(unittest.TestCase):
+class TestMapSpeakers(unittest.TestCase):
 
 
     def data_map_entities_to_speakers(self):
@@ -106,6 +106,57 @@ class TestTranscriberHelpers(unittest.TestCase):
         self.assertEqual(mapped_no_match[0], expected_result, 
                          f"Dictionary mismatch: {mapped_no_match[0]} vs {expected_result}")        
 
+from ..merge_sentences import merge_transcript_segments
+        
+class TestTranscriberSentences(unittest.TestCase):
+
+
+
+    def test_sentence_merge_no_change(self):
+        transcript = [
+            {
+                "start": 0.0,
+                "end": 10.0,
+                "transcript": " Okay, good evening."
+            },
+            {
+                "start": 30.0,
+                "end": 35.76,
+                "transcript": " on Monday, April 28th, 2025, and I call this open meeting of the Lexington Select Board to order."
+            },
+            {
+                "start": 36.4,
+                "end": 39.94,
+                "transcript": " This evening's meeting is being conducted in a hybrid format via Zoom."
+            },
+            {
+                "start": 40.480000000000004,
+                "end": 45.92,
+                "transcript": " Members of the public can view and participate in the meeting from their devices by clicking on the link posted with the agenda."
+            },
+            {
+                "start": 46.58,
+                "end": 48.54,
+                "transcript": " Please note that the meeting is being recorded."
+            },
+            {
+                "start": 48.74,
+                "end": 52.44,
+                "transcript": " We're also being broadcast live and for future on-demand viewing by Lex Media."
+            },
+            {
+                "start": 53.260000000000005,
+                "end": 56.879999999999995,
+                "transcript": " All materials provided to members of the board are also available to the public."
+            },
+            {
+                "start": 57.519999999999996,
+                "end": 59.94,
+                "transcript": " Members of the board are in person this evening."
+            }
+        ]
+        merged_transcript = merge_transcript_segments(None, transcript)
+        self.assertEqual(transcript, merged_transcript)
         
 if __name__ == "__main__":
     unittest.main()
