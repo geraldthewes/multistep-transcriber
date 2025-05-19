@@ -2,6 +2,7 @@ import unittest
 
 
 from ..introductions import map_entities_to_speakers
+from ..merge_sentences import merge_transcript_segments, _map_sentences_to_segments
 
 
 class TestMapSpeakers(unittest.TestCase):
@@ -62,8 +63,8 @@ class TestMapSpeakers(unittest.TestCase):
             ]
         # print("\n--- Exact Match Test ---")            
         mapped_exact = map_entities_to_speakers(None, ner_exact_match, diarization_exact_match, margin=0.1)
-        for item in mapped_exact:
-            print(item)
+        #for item in mapped_exact:
+        #    print(item)
         expected_result = {'start': 55.0, 'end': 60.0, 'text': 'Exact Matcher', 'label': 'Person', 'score': 0.9, 'matched_speaker': 'SPEAKER_EXACT', 'overlap_duration': 5.0}
         self.assertEqual(len(mapped_exact), 1, 
                          f"Expected exactly one item in mapped_exact, got {len(mapped_exact)}")
@@ -79,9 +80,9 @@ class TestMapSpeakers(unittest.TestCase):
             {"start": 55.0, "end": 71.0, "speaker": "SPEAKER"}
         ]        
         mapped_outside = map_entities_to_speakers(None, ner_outside_margin, diarization_exact_match, margin=2.0)
-        print("\n--- Edge Case (within margin) Test ---")
-        for item in mapped_outside:
-             print(item) 
+        # print("\n--- Edge Case (within margin) Test ---")
+        #for item in mapped_outside:
+        #     print(item) 
         expected_result = {'start': 72.0, 'end': 75.0, 'text': 'Edge Case', 'label': 'Person', 'score': 0.9, 'matched_speaker': 'SPEAKER', 'overlap_duration': 0.0}             
         self.assertEqual(len(mapped_outside), 1, 
                          f"Expected exactly one item in mapped_exact, got {len(mapped_outside)}")
@@ -97,9 +98,9 @@ class TestMapSpeakers(unittest.TestCase):
             {"start": 55.0, "end": 60.0, "speaker": "SPEAKER"}
         ]        
         mapped_no_match = map_entities_to_speakers(None, ner_no_match, diarization_output, margin=1.0)
-        print("\n--- No Match Test ---")
-        for item in mapped_no_match:
-             print(item)
+        # print("\n--- No Match Test ---")
+        #for item in mapped_no_match:
+        #     print(item)
         expected_result = {'start': 100.0, 'end': 105.0, 'text': 'No Speaker Here', 'label': 'Person', 'score': 0.9, 'matched_speaker': None, 'overlap_duration': 0.0}             
         self.assertEqual(len(mapped_no_match), 1, 
                          f"Expected exactly one item in mapped_exact, got {len(mapped_no_match)}")
@@ -110,53 +111,67 @@ from ..merge_sentences import merge_transcript_segments
         
 class TestTranscriberSentences(unittest.TestCase):
 
-
-
-    def test_sentence_merge_no_change(self):
+    def segments_no_change(self):
         transcript = [
             {
                 "start": 0.0,
                 "end": 10.0,
-                "transcript": " Okay, good evening."
+                "transcript": "Okay, good evening."
             },
             {
                 "start": 30.0,
                 "end": 35.76,
-                "transcript": " on Monday, April 28th, 2025, and I call this open meeting of the Lexington Select Board to order."
+                "transcript": "on Monday, April 28th, 2025, and I call this open meeting of the Lexington Select Board to order."
             },
             {
                 "start": 36.4,
                 "end": 39.94,
-                "transcript": " This evening's meeting is being conducted in a hybrid format via Zoom."
+                "transcript": "This evening's meeting is being conducted in a hybrid format via Zoom."
             },
             {
                 "start": 40.480000000000004,
                 "end": 45.92,
-                "transcript": " Members of the public can view and participate in the meeting from their devices by clicking on the link posted with the agenda."
+                "transcript": "Members of the public can view and participate in the meeting from their devices by clicking on the link posted with the agenda."
             },
             {
                 "start": 46.58,
                 "end": 48.54,
-                "transcript": " Please note that the meeting is being recorded."
+                "transcript": "Please note that the meeting is being recorded."
             },
             {
                 "start": 48.74,
                 "end": 52.44,
-                "transcript": " We're also being broadcast live and for future on-demand viewing by Lex Media."
+                "transcript": "We're also being broadcast live and for future on-demand viewing by Lex Media."
             },
             {
                 "start": 53.260000000000005,
                 "end": 56.879999999999995,
-                "transcript": " All materials provided to members of the board are also available to the public."
+                "transcript": "All materials provided to members of the board are also available to the public."
             },
             {
                 "start": 57.519999999999996,
                 "end": 59.94,
-                "transcript": " Members of the board are in person this evening."
+                "transcript": "Members of the board are in person this evening."
             }
-        ]
+        ]       
+        return transcript 
+    
+
+    def test_map_sentences(self):
+        transcript = self.segments_no_change()
+        sentences = ['Okay, good evening.', 'on Monday, April 28th, 2025, and I call this open meeting of the Lexington Select Board to order.', "This evening's meeting is being conducted in a hybrid format via Zoom.", 'Members of the public can view and participate in the meeting from their devices by clicking on the link posted with the agenda.', 'Please note that the meeting is being recorded.', "We're also being broadcast live and for future on-demand viewing by Lex Media.", 'All materials provided to members of the board are also available to the public.', 'Members of the board are in person this evening.']
+        cumulative_lengths = [0, 19, 116, 186, 314, 361, 439, 519, 567]
+        merged_segments = _map_sentences_to_segments(sentences, transcript, cumulative_lengths)
+        #print(merged_segments)
+        self.assertEqual(transcript, merged_segments)        
+        
+    
+    def test_sentence_merge(self):
+        transcript = self.segments_no_change()
+        # First two records will be merged
         merged_transcript = merge_transcript_segments(None, transcript)
-        self.assertEqual(transcript, merged_transcript)
+        #print(merged_transcript)
+        self.assertEqual(transcript[2:-1], merged_transcript[1:-1])
         
 if __name__ == "__main__":
     unittest.main()

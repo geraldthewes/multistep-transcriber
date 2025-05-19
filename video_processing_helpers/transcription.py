@@ -39,7 +39,7 @@ def initial_transcription(video_path: str) -> str:
                     output_lines.append({
                         "start": current_start,
                         "end": current_end,
-                        "transcript": current_text
+                        "transcript": current_text.strip()
                         })
 
                 # Start a new range
