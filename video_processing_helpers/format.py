@@ -37,15 +37,15 @@ def format_markdown(video_path: str, transcripts: List[Dict[str, Any]], nouns_li
 
             # Add speaker heading only when the topic changes
             if topic != current_topic:
-                formatted += f"\n\n## Topic {topic}:\n"
-                current_topic = topic
                 start = entry.get('start')
-                formatted += f"Time:{start}\n"
-                formatted += f"### {speaker}:\n"                
+                formatted += f"\n\n## Topic {topic}  ({start}):\n"
+                current_topic = topic
+                formatted += f"### {speaker} ({start}):\n"                
             
             # Add speaker heading only when the speaker changes
             if speaker != current_speaker:
-                formatted += f"\n### {speaker}:\n"
+                start = entry.get('start')                
+                formatted += f"\n### {speaker} ({start}):\n"
                 current_speaker = speaker
 
             # Add the transcript text, indented slightly
