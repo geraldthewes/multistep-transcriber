@@ -9,6 +9,8 @@ from faster_whisper import WhisperModel
 
 from .caching import cached_file, cached_file_object
 
+''' Performs transcription of audio to raw text '''
+
 _whisper_model = None
 
 def get_whisper_model():

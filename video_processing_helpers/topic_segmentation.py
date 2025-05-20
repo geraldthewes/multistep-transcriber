@@ -2,6 +2,8 @@ from treeseg.treeseg import TreeSeg
 
 from .caching import cached_file_object
 
+''' Break the transcript into topics '''
+
 @cached_file_object('.topics')
 def segment_topics(video_path: str, entries: list, config: dict, max_segments: int) -> list:
     """

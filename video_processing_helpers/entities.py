@@ -14,6 +14,8 @@ from .caching import cached_file, cached_file_object
 from .models import NounList
 
 
+''' Handle Named Entity Recognition (NER) tasks '''
+
 _entity_model = None
 
 def get_entity_model():
@@ -109,18 +111,6 @@ def merge_similar_texts(data: Dict[str, List[Dict[str, Any]]]) -> Dict[str, List
         #print(data[label])
     return data
 
-# def extract_entities_simple(video_path: str, labels: list, transcript: str) -> list:
-#     """Extract proper nouns and technical terms from master document"""
-#     try:
-#         entity_model = get_entity_model()
-#         transcript_sentences = [item['transcript'] for item in transcript]            
-#         # Perform entity prediction
-#         entities = entity_model.batch_predict_entities(transcript_sentences, labels, threshold=0.5)
-#         return entities
-#     except Exception as e:
-#         print(f"Error extracting nouns: {e}")
-#         traceback.print_exc()            
-#         return None
 
 # batch the requests to avoid memory issues
 batch_size =  500
