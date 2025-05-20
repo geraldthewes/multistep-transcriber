@@ -94,25 +94,27 @@ def compress_transcript(video_path: str, entries: list):
 
     compressed = []
     current = dict(entries[0])  # Create a copy of the first entry
-    duration = current["duration"]
-    speaker = current["speaker"]
-
+    duration_max = current['duration']
+    
     for entry in entries[1:]:
         # Check if current entry matches the previous one in transcript and speaker
         if (entry['transcript'] == current['transcript'] and 
             entry['start'] == current['end']):  # Check if times are consecutive
             # Update the end time to the current entry's end time
             current['end'] = entry['end']
-            if entry["duration"] > duration:
-                # Select one ker corresponding to largest duration
-                speaker = entry['speaker']
+            current['duration'] = current['duration'] + entry['duration'] 
+            if entry['duration'] > duration_max:
+                # Select one corresponding to largest duration
+                current['speaker'] = entry['speaker']
+                duration_max = entry['duration']
         else:
             # Add the completed entry to our result and start a new one
+            current['duration'] = round(current['duration'],2)
             compressed.append(current)
             current = dict(entry)  # Create a copy of the new entry
-            duration = current['duration']
-            speaker  =  current['speaker']
+            duration_max = current['duration']
     # Don't forget to add the last entry
+    current['duration'] = round(current['duration'],2)    
     compressed.append(current)
 
     return compressed

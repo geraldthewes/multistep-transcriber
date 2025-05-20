@@ -110,13 +110,16 @@ def map_entities_to_speakers(video_path: str, ner_data, diarization_data, margin
         
     return results
 
+
+MARGIN_IN_SECONDS=1.0
+
 @cached_file_object('.speaker_map')
 def create_speaker_map(video_path: str, speaker_introductions, speaker_mapping):
         ''' Create mapping betyween person name and diarization. '''
         # first extract name from introductions
         speaker_names = extract_persons(speaker_introductions)
         # Now map name to diarization
-        speakers_diarization = map_entities_to_speakers(video_path, speaker_names, speaker_mapping)
+        speakers_diarization = map_entities_to_speakers(video_path, speaker_names, speaker_mapping, MARGIN_IN_SECONDS)
         # Now create map of speaker to speaker_name
         speakers = speaker_to_name(speakers_diarization)
         return speakers

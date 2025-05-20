@@ -3,7 +3,7 @@ import unittest
 
 from ..introductions import map_entities_to_speakers
 from ..merge_sentences import merge_transcript_segments, _map_sentences_to_segments
-
+from ..helpers import compress_transcript
 
 class TestMapSpeakers(unittest.TestCase):
 
@@ -107,6 +107,74 @@ class TestMapSpeakers(unittest.TestCase):
         self.assertEqual(mapped_no_match[0], expected_result, 
                          f"Dictionary mismatch: {mapped_no_match[0]} vs {expected_result}")        
 
+
+    def test_diarization_off(self):
+        transcript = [
+            {
+                "start": 2751.5699999999997,
+                "end": 2758.8,
+                "transcript": "If you could state your name, address,any relevant boards or committees,and how you'd like the board to address you."
+            },
+            {
+                "start": 2758.8,
+                "end": 2761.2700000000004,
+                "transcript": "Thank you."
+            },
+            {
+                "start": 2761.2700000000004,
+                "end": 2764.78,
+                "transcript": "I'm Patrick Mayor, 31 Woodcliff Road, Precinct 3.You did not miss me."
+            },
+            {
+                "start": 2764.78,
+                "end": 2768.78,
+                "transcript": "I took all this time to figure out technicallyhow to raise electronically my hand."
+            },
+            {
+                "start": 2768.78,
+                "end": 2770.67,
+                "transcript": "I just didn't know how to do it.do it."
+            },
+            {
+                "start": 2770.67,
+                "end": 2774.48,
+                "transcript": "So my apologies and my thanks for allowing me to speak briefly."
+            },
+            {
+                "start": 2774.48,
+                "end": 2774.48,
+                "transcript": "No worries."
+            }
+        ]
+        diarization_output = [
+            {
+                "start": 2751.24659375,
+                "end": 2753.3222187500005,
+                "speaker": "SPEAKER_05"
+            },
+            {
+                "start": 2754.36846875,
+                "end": 2755.2965937500003,
+                "speaker": "SPEAKER_05"
+            },
+            {
+                "start": 2755.56659375,
+                "end": 2761.48971875,
+                "speaker": "SPEAKER_05"
+            },
+            {
+                "start": 2762.6540937500004,
+                "end": 2776.37346875,
+                "speaker": "SPEAKER_00"
+            }
+        ]
+        speaker_map =  map_entities_to_speakers(None, transcript, diarization_output, margin=1.0)
+        # print(speaker_map)
+        self.assertEqual(speaker_map[0]['matched_speaker'],'SPEAKER_05')
+        self.assertEqual(speaker_map[2]['matched_speaker'],'SPEAKER_00')        
+
+            
+        
 from ..merge_sentences import merge_transcript_segments
         
 class TestTranscriberSentences(unittest.TestCase):
@@ -172,6 +240,37 @@ class TestTranscriberSentences(unittest.TestCase):
         merged_transcript = merge_transcript_segments(None, transcript)
         #print(merged_transcript)
         self.assertEqual(transcript[2:-1], merged_transcript[1:-1])
+
+
+class TestTranscriberCompress(unittest.TestCase):
+
+    def test_compress_speaker(self):
+        transcript = [
+            {
+                "start": 2761.2700000000004,
+                "end": 2761.48971875,
+                "transcript": "I'm Patrick Mayor 31 Woodcliff Road, Precinct 3.You did not miss me.",
+                "speaker": "SPEAKER_05",
+                "duration": 0.21971874999962893
+            },
+            {
+                "start": 2761.48971875,
+                "end": 2764.78,
+                "transcript": "I'm Patrick Mayor 31 Woodcliff Road, Precinct 3.You did not miss me.",
+                "speaker": "SPEAKER_00",
+                "duration": 3.2902812500001346
+            }
+        ]
+        compressed = compress_transcript(None, transcript)
+        self.assertEqual(compressed[0],     {
+            "start": 2761.2700000000004,
+            "end": 2764.78,
+            "transcript": "I'm Patrick Mayor 31 Woodcliff Road, Precinct 3.You did not miss me.",
+            "speaker": "SPEAKER_00",
+            "duration": 3.51})
+
+    
+
         
 if __name__ == "__main__":
     unittest.main()
