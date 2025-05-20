@@ -9,8 +9,8 @@ from .caching import cached_file_object
 HEADLINE_MODEL = "gemma3:27b"
 HEADLINE_PROMPT = "You are a talented local reporter. You have been asked to provide a single descriptive headline to introduce the following section of a transcript from a town meeting for the town audience. Only return the headline with no justification or explanation."
 
-@cached_file_object('.topic_headlines')
-def generate_topic_headlines(video_path: str, grouped_topic_texts: List[str]) -> List[str]:
+
+def _generate_topic_headlines(video_path: str, grouped_topic_texts: List[str]) -> List[str]:
     """
     Generates a headline for each topic's concatenated transcript text using an LLM.
 
@@ -52,14 +52,15 @@ def generate_topic_headlines(video_path: str, grouped_topic_texts: List[str]) ->
     
     return headlines
 
-
-def _prepare_and_generate_headlines(video_path: str, updated_transcript_with_topics: List[dict]):
+@cached_file_object('.topic_headlines')
+def prepare_and_generate_headlines(video_path: str, updated_transcript_with_topics: List[dict]):
     """
     Prepares transcript text grouped by topic and generates headlines.
     """
+    headlines = None
     if not updated_transcript_with_topics:
         print("No transcript entries to process for headlines.")
-        return
+        return headlines
 
     # Determine the range of topic numbers
     topic_numbers = sorted(list(set(
@@ -88,11 +89,12 @@ def _prepare_and_generate_headlines(video_path: str, updated_transcript_with_top
     
     if grouped_texts_for_headlines:
         # This call will generate headlines and cache them via the decorator
-        generate_topic_headlines(video_path, grouped_texts_for_headlines)
+        return _generate_topic_headlines(video_path, grouped_texts_for_headlines)
     elif not topic_numbers: # Already printed "No topics found..."
         pass
     else: # topic_numbers existed, but somehow grouped_texts_for_headlines is empty
         print("No text content found for topics, skipping headline generation.")
+    return None
 
 
 @cached_file_object('.topics')
@@ -112,9 +114,6 @@ def segment_topics(video_path: str, entries: list, config: dict, max_segments: i
     segmenter = TreeSeg(configs=config, entries=entries)
     segments = segmenter.segment_meeting(max_segments)
     updated_transcript_with_topics = update_transcript_with_topics(entries, segments)
-
-    # Generate and cache topic headlines
-    _prepare_and_generate_headlines(video_path, updated_transcript_with_topics)
 
     return updated_transcript_with_topics
 

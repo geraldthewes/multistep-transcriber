@@ -24,7 +24,10 @@ def format_transcript(video_path: str, transcripts: str) -> str:
         return transcript
 
 @cached_file('.md')
-def format_markdown(video_path: str, transcripts: List[Dict[str, Any]], nouns_list: Dict[str, List[Dict[str, Any]]]) -> str:
+def format_markdown(video_path: str,
+                    transcripts: List[Dict[str, Any]],
+                    nouns_list: Dict[str, List[Dict[str, Any]]],
+                    topic_headlines:list) -> str:
     """Formats the final transcript as Markdown."""
     try:
         formatted = "# Transcribed Video\n\n"
@@ -38,7 +41,8 @@ def format_markdown(video_path: str, transcripts: List[Dict[str, Any]], nouns_li
             # Add speaker heading only when the topic changes
             if topic != current_topic:
                 start = entry.get('start')
-                formatted += f"\n\n## Topic {topic}  ({start}):\n"
+                headline = topic_headlines[topic]
+                formatted += f"\n\n## Topic {headline}  ({start}):\n"
                 current_topic = topic
                 formatted += f"### {speaker} ({start}):\n"                
             
