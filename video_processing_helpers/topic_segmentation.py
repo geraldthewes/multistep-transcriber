@@ -52,6 +52,49 @@ def generate_topic_headlines(video_path: str, grouped_topic_texts: List[str]) ->
     
     return headlines
 
+
+def _prepare_and_generate_headlines(video_path: str, updated_transcript_with_topics: List[dict]):
+    """
+    Prepares transcript text grouped by topic and generates headlines.
+    """
+    if not updated_transcript_with_topics:
+        print("No transcript entries to process for headlines.")
+        return
+
+    # Determine the range of topic numbers
+    topic_numbers = sorted(list(set(
+        entry['topic'] for entry in updated_transcript_with_topics if 'topic' in entry and entry['topic'] is not None
+    )))
+
+    if not topic_numbers:
+        print("No topics found in transcript, skipping headline generation.")
+        grouped_texts_for_headlines = []
+    else:
+        # Topics are 0-indexed. If max topic is N, list size is N+1.
+        max_topic_val = topic_numbers[-1]
+        grouped_texts_for_headlines = [""] * (max_topic_val + 1)
+        
+        for entry in updated_transcript_with_topics:
+            topic_idx = entry.get('topic')
+            if topic_idx is not None and 0 <= topic_idx <= max_topic_val:
+                # Concatenate transcript texts for the same topic
+                if grouped_texts_for_headlines[topic_idx]:
+                    grouped_texts_for_headlines[topic_idx] += " " + entry['transcript']
+                else:
+                    grouped_texts_for_headlines[topic_idx] = entry['transcript']
+            elif topic_idx is not None:
+                # This should not happen if max_topic_val is derived correctly from existing topics
+                print(f"Warning: Encountered topic index {topic_idx} outside expected range [0, {max_topic_val}] during headline text preparation.")
+    
+    if grouped_texts_for_headlines:
+        # This call will generate headlines and cache them via the decorator
+        generate_topic_headlines(video_path, grouped_texts_for_headlines)
+    elif not topic_numbers: # Already printed "No topics found..."
+        pass
+    else: # topic_numbers existed, but somehow grouped_texts_for_headlines is empty
+        print("No text content found for topics, skipping headline generation.")
+
+
 @cached_file_object('.topics')
 def segment_topics(video_path: str, entries: list, config: dict, max_segments: int) -> list:
     """
@@ -71,39 +114,7 @@ def segment_topics(video_path: str, entries: list, config: dict, max_segments: i
     updated_transcript_with_topics = update_transcript_with_topics(entries, segments)
 
     # Generate and cache topic headlines
-    if updated_transcript_with_topics:
-        # Determine the range of topic numbers
-        topic_numbers = sorted(list(set(
-            entry['topic'] for entry in updated_transcript_with_topics if 'topic' in entry and entry['topic'] is not None
-        )))
-
-        if not topic_numbers:
-            print("No topics found in transcript, skipping headline generation.")
-            grouped_texts_for_headlines = []
-        else:
-            # Topics are 0-indexed. If max topic is N, list size is N+1.
-            max_topic_val = topic_numbers[-1]
-            grouped_texts_for_headlines = [""] * (max_topic_val + 1)
-            
-            for entry in updated_transcript_with_topics:
-                topic_idx = entry.get('topic')
-                if topic_idx is not None and 0 <= topic_idx <= max_topic_val:
-                    # Concatenate transcript texts for the same topic
-                    if grouped_texts_for_headlines[topic_idx]:
-                        grouped_texts_for_headlines[topic_idx] += " " + entry['transcript']
-                    else:
-                        grouped_texts_for_headlines[topic_idx] = entry['transcript']
-                elif topic_idx is not None:
-                    # This should not happen if max_topic_val is derived correctly from existing topics
-                    print(f"Warning: Encountered topic index {topic_idx} outside expected range [0, {max_topic_val}] during headline text preparation.")
-        
-        if grouped_texts_for_headlines:
-            # This call will generate headlines and cache them via the decorator
-            generate_topic_headlines(video_path, grouped_texts_for_headlines)
-        elif not topic_numbers: # Already printed "No topics found..."
-            pass
-        else: # topic_numbers existed, but somehow grouped_texts_for_headlines is empty
-            print("No text content found for topics, skipping headline generation.")
+    _prepare_and_generate_headlines(video_path, updated_transcript_with_topics)
 
     return updated_transcript_with_topics
 
