@@ -17,9 +17,9 @@ embeddings_config = Embeddings(
     endpoint=os.getenv("OLLAMA_HOST", "")   # "https://api.openai.com/v1/embeddings"
 )
 config = {
-    "MIN_SEGMENT_SIZE": 5,
+    "MIN_SEGMENT_SIZE": 10,
     "LAMBDA_BALANCE": 0,
-    "UTTERANCE_EXPANSION_WIDTH": 2,
+    "UTTERANCE_EXPANSION_WIDTH": 3,
     "EMBEDDINGS": embeddings_config,
     "TEXT_KEY": "transcript"
 }

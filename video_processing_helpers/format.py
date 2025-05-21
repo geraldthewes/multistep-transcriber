@@ -86,6 +86,9 @@ def format_markdown(video_path: str,
 
         formatted += f'\n#Appendix: List of Entities\n'
         for label in nouns_list:
+            if label == 'Date':
+                # Skip dates, not useful
+                continue
             formatted += f'### {label}\n'
             for noun in nouns_list[label]:
                 formatted += f"- {noun['text']}\n"
