@@ -10,4 +10,4 @@ from .transcription import initial_transcription
 from .helpers import merge_transcript_diarization, compress_transcript, map_speakers
 from .format import format_transcript, format_markdown
 from .merge_sentences import merge_transcript_segments
-from .topic_segmentation import segment_topics, prepare_and_generate_headlines
+from .topic_segmentation import segment_topics, prepare_and_generate_headlines, prepare_and_generate_summary

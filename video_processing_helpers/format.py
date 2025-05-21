@@ -27,7 +27,8 @@ def format_transcript(video_path: str, transcripts: str) -> str:
 def format_markdown(video_path: str,
                     transcripts: List[Dict[str, Any]],
                     nouns_list: Dict[str, List[Dict[str, Any]]],
-                    topic_headlines:list) -> str:
+                    topic_headlines: list,
+                    topic_summary: list) -> str:
     """Formats the final transcript as Markdown."""
     try:
         formatted = "# Transcribed Video\n\n"
@@ -42,14 +43,16 @@ def format_markdown(video_path: str,
             if topic != current_topic:
                 start = entry.get('start')
                 headline = topic_headlines[topic]
-                formatted += f"\n\n## Topic {headline}  ({start}):\n"
+                formatted += f"\n\n## Topic {headline}  ({start})\n"
                 current_topic = topic
-                formatted += f"### {speaker} ({start}):\n"                
+                summary = topic_summary[topic]                
+                formatted += f"### Summary\n{summary}\n"
+                formatted += f"### {speaker} ({start})\n"                
             
             # Add speaker heading only when the speaker changes
             if speaker != current_speaker:
                 start = entry.get('start')                
-                formatted += f"\n### {speaker} ({start}):\n"
+                formatted += f"\n### {speaker} ({start})\n"
                 current_speaker = speaker
 
             # Add the transcript text, indented slightly

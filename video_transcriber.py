@@ -60,12 +60,18 @@ class VideoTranscriber:
         processed_transcript = segment_topics(video_path, transcript, self.topic_config, max_topics)
         # Generate and cache topic headlines
         topic_headlines = prepare_and_generate_headlines(video_path, processed_transcript)
+        topic_summary = prepare_and_generate_summary(video_path, processed_transcript)
         
-        return processed_transcript, topic_headlines
+        return processed_transcript, topic_headlines, topic_summary
     
-    def format_transcript(self, video_path: str, transcript: list, nouns_list:  Dict[str, List[Dict[str, Any]]], topic_headlines: list) -> None:
+    def format_transcript(self,
+                          video_path: str,
+                          transcript: list,
+                          nouns_list:  Dict[str, List[Dict[str, Any]]],
+                          topic_headlines: list,
+                          topic_summary: list) -> None:
         """Format the transcript"""
 
         transcript_formatted = format_transcript(video_path, transcript)
-        transcript_markdown = format_markdown(video_path, transcript, nouns_list, topic_headlines)        
+        transcript_markdown = format_markdown(video_path, transcript, nouns_list, topic_headlines, topic_summary)        
         
