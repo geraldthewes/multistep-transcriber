@@ -64,6 +64,9 @@ Continuous Improvement: We can fine-tune models on our specific content for bett
 ```
 pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu126
 pip install -r requirements.txt
+git clone https://github.com/geraldthewes/TopicTreeSeg.git
+cd TopicTreeSeg
+pip install .
 ```
 
 ## Usage

@@ -6,7 +6,7 @@ import logging
 import argparse
 
 from video_transcriber import VideoTranscriber
-from treeseg import Embeddings, ollama_embeddings
+from topic_treeseg import Embeddings, ollama_embeddings
 
 # Build config
 # Configuration

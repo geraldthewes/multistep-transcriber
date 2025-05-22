@@ -6,7 +6,7 @@ import os, sys
 import json
 import argparse
 
-from treeseg import Embeddings, ollama_embeddings
+from topic_treeseg import Embeddings, ollama_embeddings
 
 from  video_processing_helpers import segment_topics
 
