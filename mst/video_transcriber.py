@@ -6,7 +6,7 @@ import logging
 import argparse
 from typing import List, Dict, Any
 
-from  video_processing_helpers import *
+from  .steps import *
     
 class VideoTranscriber:
     def __init__(self, topic_config=None):

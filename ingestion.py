@@ -5,7 +5,7 @@ import torch
 import logging
 import argparse
 
-from video_transcriber import VideoTranscriber
+from multistep-transcriber import VideoTranscriber
 from topic_treeseg import Embeddings, ollama_embeddings
 
 # Build config
