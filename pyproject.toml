@@ -1,0 +1,63 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "multistep-transcriber"
+version = "0.1.0" # You can update this as you release new versions
+authors = [
+  { name="Your Name", email="gerald@geraldthewes.org" }, # TODO: Replace with your actual name and email
+]
+description = "A multi-step, automated workflow for generating high-quality video/audio transcripts using LLMs and other AI models."
+readme = "README.md"
+requires-python = ">=3.8" # Adjust if your code has different Python version requirements
+license = "MIT"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "License :: OSI Approved :: MIT License", # Based on your LICENSE file
+    "Operating System :: OS Independent",
+    "Intended Audience :: Developers",
+    "Topic :: Multimedia :: Sound/Audio :: Speech",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Text Processing :: Linguistic",
+]
+
+dependencies = [
+    "ctranslate2>=4.4.0",
+    "faster-whisper",
+    "transformers",
+    "pyannote.audio",
+    "torch",
+    "tqdm",
+    "ollama",
+    "sentence_transformers",
+    "gliner",
+    "setfit",
+    "structlog",
+    "spacy",
+    # "topic-treeseg" # If mst.steps.topic_segmentation directly imports and uses TopicTreeSeg,
+                      # and TopicTreeSeg is installable (e.g., from PyPI or a local wheel).
+                      # The README suggests TopicTreeSeg is installed separately.
+                      # If mst module code (e.g. in mst/steps/) imports 'topic_treeseg' or 'treeseg',
+                      # ensure this dependency is correctly specified.
+]
+
+[project.urls]
+Homepage = "https://github.com/geraldthewes/multistep-transcriber" 
+Repository = "https://github.com/geraldthewes/multistep-transcriber"
+
+# Optional: To make scripts like ingestion.py and topic_segment.py installable as command-line tools,
+# they would typically need to be moved into the 'mst' package (e.g., in an mst/cli/ subdirectory)
+# and their imports updated. If you do that, you can uncomment and adapt the following:
+# [project.scripts]
+# mst-ingest = "mst.cli.ingestion:main"
+# mst-segment-topics = "mst.cli.topic_segment:main"
+
+[tool.setuptools.packages.find]
+where = ["."]  # Look for packages in the current directory (project root)
+include = ["mst*"]  # Include the 'mst' package and any subpackages
+exclude = ["mst.steps.tests*"] # Exclude the tests directory from the build

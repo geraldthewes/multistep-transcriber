@@ -103,5 +103,5 @@ python  topic_segment.py --transcript-file   /mnt/data3/AI/data/Needham/2024-10-
 
 ```
 python -m unittest test_transcriber.py
-python -m unittest video_processing_helpers/tests/test_helpers.py
+python -m unittest mst/steps/tests/test_helpers.py
 ```

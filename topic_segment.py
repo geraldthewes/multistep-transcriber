@@ -8,7 +8,7 @@ import argparse
 
 from topic_treeseg import Embeddings, ollama_embeddings
 
-from  video_processing_helpers import segment_topics
+from mst.steps.topic_segmentation import segment_topics
 
 
 def main():
