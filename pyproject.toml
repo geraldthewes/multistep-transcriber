@@ -38,11 +38,7 @@ dependencies = [
     "setfit",
     "structlog",
     "spacy",
-    # "topic-treeseg" # If mst.steps.topic_segmentation directly imports and uses TopicTreeSeg,
-                      # and TopicTreeSeg is installable (e.g., from PyPI or a local wheel).
-                      # The README suggests TopicTreeSeg is installed separately.
-                      # If mst module code (e.g. in mst/steps/) imports 'topic_treeseg' or 'treeseg',
-                      # ensure this dependency is correctly specified.
+    "topic-treeseg"
 ]
 
 [project.urls]

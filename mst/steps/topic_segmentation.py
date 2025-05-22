@@ -1,4 +1,4 @@
-from topic_treeseg  import TreeSeg
+from treeseg  import TreeSeg
 from ollama import chat
 from typing import List
 

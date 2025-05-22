@@ -6,7 +6,7 @@ import os, sys
 import json
 import argparse
 
-from topic_treeseg import Embeddings, ollama_embeddings
+from treeseg import Embeddings, ollama_embeddings
 
 from mst.steps.topic_segmentation import segment_topics
 
