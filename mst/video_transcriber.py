@@ -74,4 +74,18 @@ class VideoTranscriber:
 
         transcript_formatted = format_transcript(video_path, transcript)
         transcript_markdown = format_markdown(video_path, transcript, nouns_list, topic_headlines, topic_summary)        
+
+
+    def retrieve_json(self, video_path: str): 
+        ''' return transcription result as JSON '''
+        path = get_cache_file(video_path, EXTENSION_TOPICS)        
+        return load_text_file(path)
+
+    def retrieve_markdown(self, video_path: str): 
+        ''' return transcription result as markdown '''
+        path = get_cache_file(video_path, EXTENSION_MARKDOWN)
+        return load_object_file(path)
         
+    def clear(self, video_path: str):
+        '''Clear all cache files '''
+        return clear_cache_directory(video_path)

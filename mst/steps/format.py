@@ -8,6 +8,8 @@ from typing import List, Dict, Any
 
 from .caching import cached_file, cached_file_object
 
+EXTENSION_MARKDOWN = '.md'
+
 
 @cached_file('.formatted')
 def format_transcript(video_path: str, transcripts: str) -> str:
@@ -34,7 +36,7 @@ def _create_anchor_link(subheading):
     return anchor_link
 
     
-@cached_file('.md')
+@cached_file(EXTENSION_MARKDOWN)
 def format_markdown(video_path: str,
                     transcripts: List[Dict[str, Any]],
                     nouns_list: Dict[str, List[Dict[str, Any]]],

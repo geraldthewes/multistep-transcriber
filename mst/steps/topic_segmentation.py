@@ -7,6 +7,7 @@ from .caching import cached_file_object
 ''' Break the transcript into topics '''
 
 TOPIC_MODEL = "gemma3:27b"
+EXTENSION_TOPICS = '.topics'
 
 
 def _generate_topic_outputs(video_path: str, grouped_topic_texts: List[str], llm_prompt_template: str) -> List[str]:
@@ -118,7 +119,7 @@ def prepare_and_generate_summary(video_path: str, updated_transcript_with_topics
     return _create_outputs_from_transcript_topics(video_path, updated_transcript_with_topics, SUMMARY_PROMPT)
 
 
-@cached_file_object('.topics')
+@cached_file_object(EXTENSION_TOPICS)
 def segment_topics(video_path: str, entries: list, config: dict, max_segments: int) -> list:
     """
     Process transcript entries, assign topic numbers, and generate/cache topic headlines.
