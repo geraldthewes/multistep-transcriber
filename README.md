@@ -45,7 +45,7 @@ pip install .
 
 ## Usage
 
-Please consult the documentation on how to use the package. For a simple overview read the [introduction](deocumentation/index.md)
+Please consult the documentation on how to use the package. For a simple overview read the [introduction](documentation/index.md)
 
 ## Unit Tests
 
