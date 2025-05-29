@@ -9,12 +9,47 @@ from typing import List, Dict, Any
 from  .steps import *
     
 class VideoTranscriber:
+    """
+    A class to handle the end-to-end video transcription process,
+    including initial transcription, noun extraction, correction,
+    speaker diarization, topic segmentation, and formatting.
+    """
     def __init__(self, topic_config=None):
+        """
+        Initializes the VideoTranscriber.
+
+        Args:
+            topic_config (dict, optional): Configuration for topic segmentation.
+                                           Defaults to None, in which case topic
+                                           segmentation will be skipped.
+        """
         # Initialize models
         self.topic_config = topic_config
 
     def transcribe_video(self, video_path: str) -> list:
-        """Main function to run the complete transcription process"""
+        """
+        Processes a video file through the complete transcription pipeline.
+
+        The pipeline includes:
+        1. Initial transcription using a speech-to-text model.
+        2. Merging transcript segments into sentences.
+        3. Extracting nouns and important terms.
+        4. Correcting the transcript using the extracted nouns.
+        5. Identifying speakers (diarization).
+        6. Merging diarization information with the transcript.
+        7. Compressing the transcript by combining consecutive segments from the same speaker.
+        8. Finding speaker introductions in the raw transcript.
+        9. Creating a map of speaker IDs to actual names based on introductions.
+        10. Applying the speaker names to the final transcript.
+
+        Args:
+            video_path (str): The file path to the video or audio file.
+
+        Returns:
+            tuple: A tuple containing:
+                - transcript_final (list): The final processed transcript with speaker information.
+                - nouns_list (list): A list of extracted nouns and entities.
+        """
 
         
         print('Step 1: Initial transcription')
@@ -52,11 +87,27 @@ class VideoTranscriber:
         
         return transcript_final, nouns_list
 
-    def topics(self, video_path: str, transcript: list, max_topics) -> list:
-        """Break transcript into topics"""
+    def topics(self, video_path: str, transcript: list, max_topics: int) -> tuple:
+        """
+        Segments the transcript into topics and generates headlines and summaries for them.
+
+        If `topic_config` was not provided during initialization, this step is skipped.
+
+        Args:
+            video_path (str): The file path to the video or audio file, used for caching.
+            transcript (list): The transcript to be segmented (typically the output of `transcribe_video`).
+            max_topics (int): The maximum number of topics to segment the transcript into.
+
+        Returns:
+            tuple: A tuple containing:
+                - processed_transcript (list): The transcript with topic information.
+                - topic_headlines (list): A list of generated headlines for each topic.
+                - topic_summary (list): A list of generated summaries for each topic.
+            If topic segmentation is skipped, returns the original transcript and two empty lists.
+        """
         if not self.topic_config:
             print('No topic segmentation configuration. Skipping topic segmentation')
-            return transcript
+            return transcript, [], []
         processed_transcript = segment_topics(video_path, transcript, self.topic_config, max_topics)
         # Generate and cache topic headlines
         topic_headlines = prepare_and_generate_headlines(video_path, processed_transcript)
@@ -70,22 +121,59 @@ class VideoTranscriber:
                           nouns_list:  Dict[str, List[Dict[str, Any]]],
                           topic_headlines: list,
                           topic_summary: list) -> None:
-        """Format the transcript"""
+        """
+        Formats the processed transcript into plain text and Markdown.
+
+        The formatted outputs are cached to files.
+
+        Args:
+            video_path (str): The file path to the video or audio file, used for caching.
+            transcript (list): The final transcript data.
+            nouns_list (Dict[str, List[Dict[str, Any]]]): A dictionary of extracted nouns/entities.
+            topic_headlines (list): A list of topic headlines.
+            topic_summary (list): A list of topic summaries.
+        """
 
         transcript_formatted = format_transcript(video_path, transcript)
         transcript_markdown = format_markdown(video_path, transcript, nouns_list, topic_headlines, topic_summary)        
 
 
-    def retrieve_json(self, video_path: str): 
-        ''' return transcription result as JSON '''
+    def retrieve_json(self, video_path: str) -> str | None:
+        """
+        Retrieves the cached transcript with topic segmentation as a JSON string.
+
+        This typically loads the '.topics' cached file.
+
+        Args:
+            video_path (str): The file path to the video or audio file, used to locate the cache.
+
+        Returns:
+            str | None: The JSON string content of the cached topics file, or None if not found.
+        """
         path = get_cache_file(video_path, EXTENSION_TOPICS)        
         return load_text_file(path)
 
-    def retrieve_markdown(self, video_path: str): 
-        ''' return transcription result as markdown '''
+    def retrieve_markdown(self, video_path: str) -> Any | None:
+        """
+        Retrieves the cached transcript formatted as Markdown.
+
+        This typically loads the '.md' cached file.
+
+        Args:
+            video_path (str): The file path to the video or audio file, used to locate the cache.
+
+        Returns:
+            Any | None: The content of the cached Markdown file (often a string),
+                        or None if not found. The return type depends on `load_object_file`.
+        """
         path = get_cache_file(video_path, EXTENSION_MARKDOWN)
         return load_object_file(path)
         
     def clear(self, video_path: str):
-        '''Clear all cache files '''
+        """
+        Clears all cached files associated with the given video path.
+
+        Args:
+            video_path (str): The file path to the video or audio file whose cache should be cleared.
+        """
         return clear_cache_directory(video_path)
