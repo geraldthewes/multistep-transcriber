@@ -38,7 +38,7 @@ dependencies = [
     "setfit",
     "structlog",
     "spacy",
-    "topic-treeseg"
+    "topic-treeseg @ git+https://github.com/geraldthewes/topic-treeseg.git"
 ]
 
 [project.optional-dependencies]
