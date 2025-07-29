@@ -16,7 +16,7 @@ _whisper_model = None
 def get_whisper_model():
     global _whisper_model
     if _whisper_model is None:
-        _whisper_model = WhisperModel("/mnt/data3/AI/software/VideoRAG/faster-distil-whisper-large-v3")
+        _whisper_model = WhisperModel("distil-whisper/distil-large-v3")
         _whisper_model.logger.setLevel(logging.WARNING)
         
     return _whisper_model

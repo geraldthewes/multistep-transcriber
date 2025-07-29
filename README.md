@@ -27,6 +27,11 @@ This packages currently only handles wav files, so if you have a video, you must
 This package depends on an external ollama server with some models, and will download some models from Hugging Face. The system is expected to have a GPU for better performance.
 Install ollama follwoing documentation on the [olama web site](https://ollama.com/)
 
+**Hugging Face Token Required**: You need a Hugging Face token with read access to download the models. Set the `HF_TOKEN` environment variable:
+```bash
+export HF_TOKEN=your_hugging_face_token_here
+```
+
 ## Installation
 
 ### Install package
