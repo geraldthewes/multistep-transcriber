@@ -46,7 +46,19 @@ class TestTranscriber(unittest.TestCase):
         result, headlines, summary = self.transcriber.topics(self.path, result, 5)    
         self.transcriber.format_transcript(self.path, result, nouns_list, headlines, summary)
         self.assertIsNotNone(self.transcriber.retrieve_json)
-        self.assertIsNotNone(self.transcriber.retrieve_markdown)        
+        self.assertIsNotNone(self.transcriber.retrieve_markdown)
+        
+    def test_retrieve_markdown(self):
+        """Test that retrieve_markdown() correctly loads markdown content as text."""
+        result, nouns_list = self.transcriber.transcribe_video(self.path)        
+        result, headlines, summary = self.transcriber.topics(self.path, result, 5)    
+        self.transcriber.format_transcript(self.path, result, nouns_list, headlines, summary)
+        
+        # Test that retrieve_markdown returns string content
+        markdown_content = self.transcriber.retrieve_markdown(self.path)
+        self.assertIsNotNone(markdown_content, "Markdown content should not be None")
+        self.assertIsInstance(markdown_content, str, "Markdown content should be a string")
+        self.assertIn("#", markdown_content, "Markdown content should contain markdown syntax")        
         
 
 if __name__ == "__main__":

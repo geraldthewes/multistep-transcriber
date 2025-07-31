@@ -167,7 +167,7 @@ class VideoTranscriber:
                         or None if not found. The return type depends on `load_object_file`.
         """
         path = get_cache_file(video_path, EXTENSION_MARKDOWN)
-        return load_object_file(path)
+        return load_text_file(path)
         
     def clear(self, video_path: str):
         """
