@@ -26,7 +26,7 @@ class VideoTranscriber:
         # Initialize models
         self.topic_config = topic_config
 
-    def transcribe_video(self, video_path: str) -> list:
+    def transcribe_video(self, video_path: str, transcribe: bool = True) -> list:
         """
         Processes a video file through the complete transcription pipeline.
 
@@ -44,6 +44,7 @@ class VideoTranscriber:
 
         Args:
             video_path (str): The file path to the video or audio file.
+            transcribe(bool): False to skip audio transcription, default True 
 
         Returns:
             tuple: A tuple containing:

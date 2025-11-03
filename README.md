@@ -37,8 +37,16 @@ export HF_TOKEN=your_hugging_face_token_here
 ### Install package
 
 ```
+conda install ffmpeg -c conda-forge
+
+# CPU
+conda install ffmpeg=7.0.1 -c conda-forge --force-reinstall
+pip install torch==2.8.0 torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu --no-cache-dir
+pip install torchcodec==0.7.0 --no-cache-dir
+# GPU
 pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu126
-pip install https://github.com/geraldthewes/topic-treeseg 
+
+pip install git+https://github.com/geraldthewes/topic-treeseg.git
 pip install .
 ```
 
