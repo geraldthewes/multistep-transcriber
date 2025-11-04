@@ -1,10 +1,10 @@
 #!/bin/sh
 
 # Install ffmpeg (needs to be <= v7)
-DEBIAN_FRONTEND=noninteractive  apt install -y ffmpeg
+sudo apt update
+sudo apt install -y ffmpeg
 
 # Install basic packages
-pip install ffmpeg==7.0.1
 pip install torch==2.8.0 torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu --no-cache-dir
 pip install torchcodec==0.7.0 --no-cache-dir
 # GPU
