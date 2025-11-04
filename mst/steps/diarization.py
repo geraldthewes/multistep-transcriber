@@ -15,10 +15,10 @@ def get_diarization_pipeline():
     global _diarization_pipeline
     diarization_model = "pyannote/speaker-diarization-3.1"
     if _diarization_pipeline is None:
-        _diarization_pipeline = Pipeline.from_pretrained(
-            diarization_model,
-            use_auth_token=os.environ["HF_TOKEN"])
-        _diarization_pipeline.to(torch.device("cuda"))
+        _diarization_pipeline = Pipeline.from_pretrained(diarization_model)
+        # Check if CUDA is available, otherwise fall back to CPU
+        device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+        _diarization_pipeline.to(device)
         
     return _diarization_pipeline
 
