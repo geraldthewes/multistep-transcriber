@@ -1,0 +1,23 @@
+{
+  "mcpServers": {
+    "serena": {
+      "command": "uvx",
+      "args": [
+        "--from", 
+        "git+https://github.com/oraios/serena",
+        "serena",
+        "start-mcp-server",
+        "--project",
+        "/workspaces/multistep-transcriber/"
+      ],
+      "timeout": 30000,
+      "trust": true
+    }
+  },
+  "model": {
+    "sessionTokenLimit": " 131072"
+  },
+  "$version": 2
+}
+
+

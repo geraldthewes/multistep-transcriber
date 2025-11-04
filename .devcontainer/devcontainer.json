@@ -1,6 +1,6 @@
 {
     "name": "Multistep Transcriber",
-    "image": "mcr.microsoft.com/devcontainers/python:1-3.12-bullseye",  // Or your custom Dockerfile: "build": {"dockerfile": "Dockerfile"}
+    "image": "mcr.microsoft.com/devcontainers/python:1-3.12-bookworm",  // Or your custom Dockerfile: "build": {"dockerfile": "Dockerfile"}
     "remoteUser": "vscode",  // Non-root user for security; change if needed
     "postCreateCommand": "./setup.sh",
     "containerEnv": {
