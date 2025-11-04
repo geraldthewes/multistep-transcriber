@@ -30,6 +30,7 @@ Install ollama follwoing documentation on the [olama web site](https://ollama.co
 **Hugging Face Token Required**: You need a Hugging Face token with read access to download the models. Set the `HF_TOKEN` environment variable:
 ```bash
 export HF_TOKEN=your_hugging_face_token_here
+export OLLAMA_HOST=<host:11434>
 ```
 
 ## Installation
