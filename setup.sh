@@ -1,11 +1,8 @@
 #!/bin/sh
 
-# Install ffmpeg (needs to be <= v7) and qwen code
-curl -fsSL https://deb.nodesource.com/setup_24.x | sudo -E bash -
+# Install ffmpeg (needs to be <= v7) 
 sudo apt update
-sudo apt install -y ffmpeg nodejs
-sudo npm install -g @qwen-code/qwen-code@latest
-curl -LsSf https://astral.sh/uv/install.sh | sh
+sudo apt install -y ffmpeg 
 
 # Install basic packages
 pip install torch==2.8.0 torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu --no-cache-dir
