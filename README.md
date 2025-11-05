@@ -60,3 +60,13 @@ Unit tests can be run as follows
 python -m unittest test_transcriber.py
 python -m unittest mst/steps/tests/test_helpers.py
 ```
+
+## Devcontainer
+
+```
+devpod up github.com/geraldthewes/multistep-transcriber --provider nomad \
+    --ide none \
+    --provider-option NOMAD_CPU=2000 \
+    --provider-option NOMAD_MEMORYMB=8192 \
+    --provider-option NOMAD_DISKMB=512 
+```
