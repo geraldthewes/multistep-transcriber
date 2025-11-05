@@ -74,3 +74,29 @@ I've successfully modified the diarization implementation to support both CPU an
 
   The fix is minimal and maintains backward compatibility - systems with CUDA will continue to use GPU acceleration, while
   systems without CUDA will seamlessly fall back to CPU processing.
+
+
+
+I've successfully fixed the speaker identification error in the multistep-transcriber project. The issue was caused by an API
+  change in the pyannote.audio library where the itertracks method was no longer available in newer versions.
+
+  Here's what I did to resolve the issue:
+
+   1. Identified the Problem: The error 'DiarizeOutput' object has no attribute 'itertracks' occurred because the pyannote.audio
+      library API had changed between versions.
+
+   2. Implemented a Robust Solution: Modified the identify_speakers function in mst/steps/diarization.py to handle multiple API
+      versions:
+      - First attempts direct iteration over the diarization result
+      - Falls back to the older itertracks method if needed
+      - Uses speaker_diarization attribute as another fallback
+      - Maintains consistent return type (dictionary) for compatibility
+
+   3. Verified the Fix:
+      - Confirmed the function imports successfully
+      - Ran all tests successfully (4/4 tests passed)
+      - The solution handles different pyannote.audio versions gracefully
+
+  The fix ensures that the speaker identification functionality works reliably across different versions of the pyannote.audio
+  library, making the code more robust and backward-compatible.
+
