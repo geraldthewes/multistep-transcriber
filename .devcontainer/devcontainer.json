@@ -8,9 +8,10 @@
     },
     "remoteEnv": {
 	"HF_TOKEN": "${localEnv:HF_TOKEN}",
-	"OLLAMA_HOST": "${localEnv:OLLAMA_HOST}",
-	"OPENAI_API_KEY": "${localEnv:OPENAI_API_KEY}",
+	"OLLAMA_HOST": "http://ollama.cluster:11434",
+	"OPENAI_API_KEY": "***",
 	"OPENAI_MODEL": "QuantTrio/Qwen3-Coder-30B-A3B-Instruct-AWQ",
-	"OPENAI_BASE_URL":"${localEnv:OPENAI_BASE_URL}"
+	"OPENAI_BASE_URL":"http://vllm.cluster:8000/v1",
+	
   }
 }
