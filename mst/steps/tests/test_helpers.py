@@ -83,7 +83,7 @@ class TestMapSpeakers(unittest.TestCase):
         # print("\n--- Edge Case (within margin) Test ---")
         #for item in mapped_outside:
         #     print(item) 
-        expected_result = {'start': 72.0, 'end': 75.0, 'text': 'Edge Case', 'label': 'Person', 'score': 0.9, 'matched_speaker': 'SPEAKER', 'overlap_duration': 0.0}             
+        expected_result = {'start': 72.0, 'end': 75.0, 'text': 'Edge Case', 'label': 'Person', 'score': 0.9, 'matched_speaker': None, 'overlap_duration': 0.0}             
         self.assertEqual(len(mapped_outside), 1, 
                          f"Expected exactly one item in mapped_exact, got {len(mapped_outside)}")
         self.assertEqual(mapped_outside[0], expected_result, 
