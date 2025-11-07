@@ -1,0 +1,28 @@
+owner: code-agent
+repo_url: https://github.com/geraldthewes/multistep-transcriber.git
+git_ref: main
+dockerfile_path: Dockerfile
+image_name: multistep-transcriber
+image_tags:
+  - latest
+registry_url: registry.cluster:5000
+test:
+  commands:
+   - python -m unittest test_transcriber.py
+  gpu_required: false
+  env:
+   - OLLAMA_HOST=http://ollama.cluster:11434
+  vault_policies: ["transcription-policy"]
+  vault_secrets:
+  - path: "secret/data/hf/transcription"
+    fields:
+      token: "HF_TOKEN"
+resource_limits:
+  build:
+    cpu: "8000"
+    memory: "16384"
+    disk: "20480"
+  test:
+    cpu: "8000"
+    memory: "16384"
+    disk: "10240"
