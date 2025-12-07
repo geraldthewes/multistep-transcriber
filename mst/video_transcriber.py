@@ -6,7 +6,10 @@ import logging
 import argparse
 from typing import List, Dict, Any
 
-from  .steps import *
+from .steps import *
+from .steps.topic_segmentation import EXTENSION_TOPICS
+from .steps.format import EXTENSION_MARKDOWN
+from .steps.caching import get_cache_file, load_object_file
     
 class VideoTranscriber:
     """
@@ -44,7 +47,7 @@ class VideoTranscriber:
 
         Args:
             video_path (str): The file path to the video or audio file.
-            transcribe(bool): False to skip audio transcription, default True 
+            transcribe(bool): False to skip audio transcription, default True
 
         Returns:
             tuple: A tuple containing:
@@ -52,20 +55,26 @@ class VideoTranscriber:
                 - nouns_list (list): A list of extracted nouns and entities.
         """
 
-        
-        print('Step 1: Initial transcription')
-        raw_transcript = initial_transcription(video_path)
+        if transcribe:
+            print('Step 1: Initial transcription')
+            raw_transcript = initial_transcription(video_path)
+        else:
+            # assume transcription already completed
+            print('Skipping transcription step')
+            # Load the cached raw transcript
+            cache_file = get_cache_file(video_path, '.raw_transcript')
+            raw_transcript = load_object_file(cache_file)
 
         print('Step 2: Merge Sentences')
         merged_segments = merge_transcript_segments(video_path, raw_transcript)
 
         print('Step 3: Entity extraction')
         nouns_list = extract_nouns(video_path, merged_segments)
-        
+
         print('Step 4: Transcript correction')
         corrected_transcript = correct_transcript(video_path, merged_segments, nouns_list)
         # print(corrected_transcript)
-        
+
         print('Step 5: Diarization / Speaker identification')
         speaker_mapping = identify_speakers(video_path, corrected_transcript)
         #print(speaker_mapping)
@@ -77,15 +86,15 @@ class VideoTranscriber:
         compressed_transcript = compress_transcript(video_path, merged_transcript)
 
         print('Step 8: Filter transcript by speaker introductions')
-        # Use raw transcript as sentence merge can cause timing mismatch        
-        speaker_introductions = find_introductions(video_path, raw_transcript)                
+        # Use raw transcript as sentence merge can cause timing mismatch
+        speaker_introductions = find_introductions(video_path, raw_transcript)
 
         print('Step 9: Extract persons from introductions')
         speaker_map = create_speaker_map(video_path, speaker_introductions, speaker_mapping)
 
         print('Step 10: Map speaker names')
         transcript_final = map_speakers(video_path, compressed_transcript, speaker_map)
-        
+
         return transcript_final, nouns_list
 
     def topics(self, video_path: str, transcript: list, max_topics: int) -> tuple:

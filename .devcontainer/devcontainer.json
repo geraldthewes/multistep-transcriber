@@ -1,13 +1,12 @@
 {
     "name": "Multistep Transcriber",
-    "image": "registry.cluster:5000/devcontainer-python:20251105", // https://github.com/geraldthewes/nomad-docker-images
+    "image": "registry.cluster:5000/devcontainer-python:20251106b", // https://github.com/geraldthewes/nomad-docker-images
     "remoteUser": "vscode",  // Non-root user for security; change if needed
-    "postCreateCommand": "./setup.sh",
+    "postCreateCommand": "./post-setup.sh",
     "containerEnv": {
 	"PYTHONPATH": "${containerWorkspaceFolder}"
     },
     "remoteEnv": {
-	"HF_TOKEN": "${localEnv:HF_TOKEN}",
 	"OLLAMA_HOST": "http://ollama.cluster:11434",
 	"OPENAI_API_KEY": "***",
 	"OPENAI_MODEL": "QuantTrio/Qwen3-Coder-30B-A3B-Instruct-AWQ",
