@@ -10,13 +10,17 @@ from .steps import *
 from .steps.topic_segmentation import EXTENSION_TOPICS
 from .steps.format import EXTENSION_MARKDOWN
 from .steps.caching import get_cache_file, load_object_file
-    
+
 class VideoTranscriber:
     """
     A class to handle the end-to-end video transcription process,
     including initial transcription, noun extraction, correction,
     speaker diarization, topic segmentation, and formatting.
+
+    This class orchestrates the complete transcription pipeline, managing
+    the flow of data between different processing steps.
     """
+
     def __init__(self, topic_config=None):
         """
         Initializes the VideoTranscriber.
@@ -29,7 +33,7 @@ class VideoTranscriber:
         # Initialize models
         self.topic_config = topic_config
 
-    def transcribe_video(self, video_path: str, transcribe: bool = True) -> list:
+    def transcribe_video(self, video_path: str, transcribe: bool = True) -> tuple:
         """
         Processes a video file through the complete transcription pipeline.
 
@@ -54,7 +58,6 @@ class VideoTranscriber:
                 - transcript_final (list): The final processed transcript with speaker information.
                 - nouns_list (list): A list of extracted nouns and entities.
         """
-
         if transcribe:
             print('Step 1: Initial transcription')
             raw_transcript = initial_transcription(video_path)
@@ -122,9 +125,9 @@ class VideoTranscriber:
         # Generate and cache topic headlines
         topic_headlines = prepare_and_generate_headlines(video_path, processed_transcript)
         topic_summary = prepare_and_generate_summary(video_path, processed_transcript)
-        
+
         return processed_transcript, topic_headlines, topic_summary
-    
+
     def format_transcript(self,
                           video_path: str,
                           transcript: list,
@@ -143,10 +146,8 @@ class VideoTranscriber:
             topic_headlines (list): A list of topic headlines.
             topic_summary (list): A list of topic summaries.
         """
-
         transcript_formatted = format_transcript(video_path, transcript)
-        transcript_markdown = format_markdown(video_path, transcript, nouns_list, topic_headlines, topic_summary)        
-
+        transcript_markdown = format_markdown(video_path, transcript, nouns_list, topic_headlines, topic_summary)
 
     def retrieve_json(self, video_path: str) -> str | None:
         """
@@ -160,7 +161,7 @@ class VideoTranscriber:
         Returns:
             str | None: The JSON string content of the cached topics file, or None if not found.
         """
-        path = get_cache_file(video_path, EXTENSION_TOPICS)        
+        path = get_cache_file(video_path, EXTENSION_TOPICS)
         return load_text_file(path)
 
     def retrieve_markdown(self, video_path: str) -> Any | None:
@@ -178,7 +179,7 @@ class VideoTranscriber:
         """
         path = get_cache_file(video_path, EXTENSION_MARKDOWN)
         return load_text_file(path)
-        
+
     def clear(self, video_path: str):
         """
         Clears all cached files associated with the given video path.

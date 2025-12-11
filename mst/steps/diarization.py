@@ -8,23 +8,44 @@ from pyannote.audio import Pipeline
 
 from .caching import cached_file_object
 
+"""
+Module for speaker diarization using pyannote.audio.
+"""
 
 _diarization_pipeline = None
 
 def get_diarization_pipeline():
-    global _diarization_pipeline
+    """
+    Gets or initializes the pyannote diarization pipeline.
+
+    Returns:
+        Pipeline: The initialized pyannote diarization pipeline.
+    """
     diarization_model = "pyannote/speaker-diarization-3.1"
+    global _diarization_pipeline
     if _diarization_pipeline is None:
         _diarization_pipeline = Pipeline.from_pretrained(diarization_model)
         # Check if CUDA is available, otherwise fall back to CPU
         device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
         _diarization_pipeline.to(device)
-        
+
     return _diarization_pipeline
 
 @cached_file_object('.diarization')
 def identify_speakers(video_path: str, transcript: str) -> dict:
-    """Perform speaker diarization and mapping"""
+    """
+    Performs speaker diarization and creates a mapping of speaker segments.
+
+    This function identifies different speakers in the audio and creates a mapping
+    of speaker segments with their start and end times.
+
+    Args:
+        video_path (str): Path to the video or audio file.
+        transcript (str): The transcript to use for diarization.
+
+    Returns:
+        dict: Dictionary containing speaker segment information.
+    """
     try:
         diarization_pipeline = get_diarization_pipeline()
 

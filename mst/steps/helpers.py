@@ -7,9 +7,26 @@ from typing import List, Dict, Any
 
 from .caching import cached_file, cached_file_object
 
+"""
+Helper functions for transcript processing and manipulation.
+"""
 
 @cached_file_object('.merged')
 def merge_transcript_diarization(video_path: str, transcript: list, diarization: list):
+    """
+    Merges transcript and diarization information into a unified format.
+
+    This function combines transcript segments with speaker diarization information
+    to create a unified transcript with speaker labels.
+
+    Args:
+        video_path (str): Path to the video file (used for caching).
+        transcript (list): List of transcript segments.
+        diarization (list): List of speaker diarization segments.
+
+    Returns:
+        list: Merged transcript with speaker information.
+    """
     # Create a new list to store merged results
     merged = []
 
@@ -88,6 +105,19 @@ def merge_transcript_diarization(video_path: str, transcript: list, diarization:
 
 @cached_file_object('.compressed')
 def compress_transcript(video_path: str, entries: list):
+    """
+    Compresses repeated sentences in the transcript.
+
+    This function combines consecutive segments with the same speaker and text
+    to reduce redundancy in the transcript.
+
+    Args:
+        video_path (str): Path to the video file (used for caching).
+        entries (list): List of transcript entries.
+
+    Returns:
+        list: Compressed transcript with redundant segments removed.
+    """
     ''' Compress repreated senstences '''
     if not entries:
         return []
@@ -95,14 +125,14 @@ def compress_transcript(video_path: str, entries: list):
     compressed = []
     current = dict(entries[0])  # Create a copy of the first entry
     duration_max = current['duration']
-    
+
     for entry in entries[1:]:
         # Check if current entry matches the previous one in transcript and speaker
-        if (entry['transcript'] == current['transcript'] and 
+        if (entry['transcript'] == current['transcript'] and
             entry['start'] == current['end']):  # Check if times are consecutive
             # Update the end time to the current entry's end time
             current['end'] = entry['end']
-            current['duration'] = current['duration'] + entry['duration'] 
+            current['duration'] = current['duration'] + entry['duration']
             if entry['duration'] > duration_max:
                 # Select one corresponding to largest duration
                 current['speaker'] = entry['speaker']
@@ -114,20 +144,36 @@ def compress_transcript(video_path: str, entries: list):
             current = dict(entry)  # Create a copy of the new entry
             duration_max = current['duration']
     # Don't forget to add the last entry
-    current['duration'] = round(current['duration'],2)    
+    current['duration'] = round(current['duration'],2)
     compressed.append(current)
 
     return compressed
 
-        
-
-
-@cached_file_object('.final')    
+@cached_file_object('.final')
 def map_speakers(video_path: str, transcripts: list, speaker_to_name: dict):
+    """
+    Maps speaker IDs to actual names in the transcript.
+
+    Args:
+        video_path (str): Path to the video file (used for caching).
+        transcripts (list): List of transcript entries.
+        speaker_to_name (dict): Mapping of speaker IDs to names.
+
+    Returns:
+        list: Transcript with speaker names mapped.
+    """
     return  [transcript | {'speaker_name': speaker_to_name.get(transcript['speaker'],transcript['speaker'])} for transcript in transcripts]
 
-
 def flatten_texts(input_dict: Dict[str, List[Dict[str, Any]]]) -> List[str]:
+    """
+    Flattens a dictionary of texts into a simple list.
+
+    Args:
+        input_dict (Dict[str, List[Dict[str, Any]]]): Dictionary with text entries.
+
+    Returns:
+        List[str]: Flat list of text values.
+    """
     ''' Just return the nouns '''
     texts = []
     for label in input_dict:

@@ -51,18 +51,18 @@ nav:
   - API Reference:
     - 'mst Package': api/mst.md
     - 'VideoTranscriber': api/video_transcriber.md
- #   - 'Core Steps':
- #     - 'Caching': api/steps/caching.md
- #     - 'Diarization': api/steps/diarization.md
- #     - 'Entities': api/steps/entities.md
- #     - 'Formatting': api/steps/format.md
- #     - 'Helpers': api/steps/helpers.md
- #     - 'Introductions': api/steps/introductions.md
- #     - 'Merge Sentences': api/steps/merge_sentences.md
- #     - 'Models': api/steps/models.md
- #     - 'Standardize': api/steps/standardize.md
- #     - 'Topic Segmentation': api/steps/topic_segmentation.md
- #     - 'Transcription': api/steps/transcription.md
+    - 'Core Steps':
+      - 'Caching': api/steps/caching.md
+      - 'Diarization': api/steps/diarization.md
+      - 'Entities': api/steps/entities.md
+      - 'Formatting': api/steps/format.md
+      - 'Helpers': api/steps/helpers.md
+      - 'Introductions': api/steps/introductions.md
+      - 'Merge Sentences': api/steps/merge_sentences.md
+      - 'Models': api/steps/models.md
+      - 'Standardize': api/steps/standardize.md
+      - 'Topic Segmentation': api/steps/topic_segmentation.md
+      - 'Transcription': api/steps/transcription.md
 
 plugins:
   - search

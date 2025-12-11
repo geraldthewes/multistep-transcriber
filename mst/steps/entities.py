@@ -13,19 +13,34 @@ from pydantic import BaseModel
 from .caching import cached_file, cached_file_object
 from .models import NounList
 
-
-''' Handle Named Entity Recognition (NER) tasks '''
+"""
+Handles Named Entity Recognition (NER) tasks for transcript processing.
+"""
 
 _entity_model = None
 
 def get_entity_model():
+    """
+    Gets or initializes the GLiNER entity model.
+    
+    Returns:
+        GLiNER: The initialized GLiNER model instance.
+    """
     global _entity_model
     if _entity_model is None:
         _entity_model = GLiNER.from_pretrained("urchade/gliner_medium-v2.1")
     return _entity_model
 
-''' Extract what we need from results '''
 def group_by_label(data: List[List[Dict[str, Any]]]) -> Dict[str, List[Dict[str, Any]]]:
+    """
+    Groups extracted entities by their labels.
+    
+    Args:
+        data (List[List[Dict[str, Any]]]): Raw entity extraction data.
+        
+    Returns:
+        Dict[str, List[Dict[str, Any]]]: Entities grouped by label.
+    """
     # Initialize an empty dictionary to hold the results
     result = {}
 
@@ -42,14 +57,20 @@ def group_by_label(data: List[List[Dict[str, Any]]]) -> Dict[str, List[Dict[str,
                 # Add to the result dictionary under the appropriate label
                 if label not in result:
                     result[label] = []
-                result[label].append(text_score_dict)
+                result[label]..append(text_score_dict)
 
     return result
 
-
-
-''' Merge entities, pick highest prob'''
 def merge_duplicate_texts(data: Dict[str, List[Dict[str, Any]]]) -> Dict[str, List[Dict[str, Any]]]:
+    """
+    Merges duplicate entity texts, keeping the one with the highest score.
+    
+    Args:
+        data (Dict[str, List[Dict[str, Any]]]): Entities grouped by label.
+        
+    Returns:
+        Dict[str, List[Dict[str, Any]]]: Merged entities with duplicates removed.
+    """
     # Initialize an empty dictionary to hold the results
     result = {}
 
@@ -79,16 +100,23 @@ def merge_duplicate_texts(data: Dict[str, List[Dict[str, Any]]]) -> Dict[str, Li
 
     return result
 
-
 SIMILAR_NAMES_MODEL = "gemma3:27b"
 
-''' Merge entities, pick highest prob'''
-def merge_similar_texts(data: Dict[str, List[Dict[str, Any]]]) -> Dict[str, List[Dict[str, Any]]]: 
+def merge_similar_texts(data: Dict[str, List[Dict[str, Any]]]) -> Dict[str, List[Dict[str, Any]]]:
+    """
+    Merges similar entity texts using AI to select canonical spellings.
+    
+    Args:
+        data (Dict[str, List[Dict[str, Any]]]): Entities grouped by label.
+        
+    Returns:
+        Dict[str, List[Dict[str, Any]]]: Entities with similar texts merged.
+    """
     # Initialize an empty dictionary to hold the results
     result = {}
 
     prompt =  f'''You are a talented copy editor. I have this list below of person names from a transcript, some names might be the same person with different spelling. I need you to reduce the list, arranged alphabetically that select the most appropriate unique spelling for each person name in the original list. '''
-    
+
 
 
     # Iterate through each label in the input data
@@ -111,7 +139,6 @@ def merge_similar_texts(data: Dict[str, List[Dict[str, Any]]]) -> Dict[str, List
         #print(data[label])
     return data
 
-
 # batch the requests to avoid memory issues
 batch_size =  500
 threshold = 0.65
@@ -120,14 +147,14 @@ def extract_entities(labels: list, transcript: list, batch_size: int = 100) -> l
     """
     Extract proper nouns and technical terms from the transcript in batches
     to avoid memory issues with large transcripts.
-
+    
     Args:
         labels (list): List of entity labels to predict (e.g., ['PERSON', 'ORG', 'TECH TERM']).
         transcript (list): A list of dictionaries, where each dict is expected to have
                            a 'transcript' key containing a sentence or segment of text.
         batch_size (int): The maximum number of sentences to process in each batch.
                           Defaults to 100.
-
+                          
     Returns:
         list: A list containing the extracted entities from all batches,
               or None if a critical error occurs during initialization or processing.
@@ -208,9 +235,22 @@ def extract_entities(labels: list, transcript: list, batch_size: int = 100) -> l
         print(f"Critical error during entity extraction setup or loop initiation: {e}")
         traceback.print_exc()
         return None # Return None on critical failure
-    
+
 @cached_file_object('.entities')
 def extract_nouns(video_path: str, transcript: str) -> list:
+    """
+    Extracts proper nouns and technical terms from a transcript.
+    
+    This function performs entity extraction using GLiNER and processes
+    the results to group and merge entities.
+    
+    Args:
+        video_path (str): Path to the video file (used for caching).
+        transcript (str): The transcript to extract entities from.
+        
+    Returns:
+        list: Extracted entities grouped by type.
+    """
     labels = ["Person", "Organizations", "Date", "Positions", "Locations"]
     print('Extract Entities')
     entities =  extract_entities(labels, transcript)
@@ -219,11 +259,19 @@ def extract_nouns(video_path: str, transcript: str) -> list:
     print('Merge Entities')
     entities_merged = merge_duplicate_texts(entities_by_label)
     print('Reduce Entities')
-    entities_cannonical = merge_similar_texts(entities_merged)    
+    entities_cannonical = merge_similar_texts(entities_merged)
     return entities_cannonical
 
-
 def extract_persons(introductions: str) -> list:
+    """
+    Extracts person names from introductions.
+    
+    Args:
+        introductions (str): Introduction segments to extract persons from.
+        
+    Returns:
+        list: List of persons found in the introductions.
+    """
     ''' Just extract person name from introductions, and add it to it's own field '''
     labels = ["Person"]
     if not introductions:
@@ -237,4 +285,3 @@ def extract_persons(introductions: str) -> list:
             speaker_names.append(name[0])
     speakers = [transcript | {'speaker_name': name} for transcript, name in zip(introductions, speaker_names)]
     return speakers
-

@@ -10,28 +10,37 @@ from sentence_transformers import SentenceTransformer, util
 from .caching import cached_file, cached_file_object
 from .helpers import flatten_texts
 
+"""
+Module for standardizing transcript text using AI-based phonetic similarity.
+"""
+
 _noun_correction_model = None
 
 def get_noun_correction_model():
+    """
+    Gets or initializes the sentence transformer model for noun standardization.
+    
+    Returns:
+        SentenceTransformer: The initialized sentence transformer model.
+    """
     global _noun_correction_model
     if _noun_correction_model is None:
         _noun_correction_model = SentenceTransformer('paraphrase-MiniLM-L6-v2')
     return _noun_correction_model
 
-
 def standardize_nouns_ai(transcript: list, noun_list: list):
     """
     Standardizes nouns using AI-based phonetic similarity via embeddings, preserving line feeds.
-
+    
     Args:
-        transcript (str): Text with phonetic variations and original line breaks
-        noun_list (list): Standard noun spellings
-
+        transcript (list): List of transcript segments with start, end, and transcript fields.
+        noun_list (list): List of standard noun spellings.
+        
     Returns:
-        str: Standardized transcript with line breaks preserved
+        list: Standardized transcript segments with line feeds preserved.
     """
     # Load the model
-    noun_correction_model = get_noun_correction_model() 
+    noun_correction_model = get_noun_correction_model()
 
     # Compute embeddings for standard nouns
     noun_embeddings = noun_correction_model.encode(noun_list, convert_to_tensor=True)
@@ -66,7 +75,7 @@ def standardize_nouns_ai(transcript: list, noun_list: list):
             max_similarity, best_match_idx = similarities.max(), similarities.argmax()
 
             # If similarity is high enough, replace with standard form
-            if max_similarity > 0.85:  # Threshold can be tuned
+           : if max_similarity > 0.85:  # Threshold can be tuned
                 standard_form = noun_list[best_match_idx]
                 if word[0].isupper():
                     standard_form = standard_form.capitalize()
@@ -81,14 +90,26 @@ def standardize_nouns_ai(transcript: list, noun_list: list):
                 "transcript": ' '.join(standardized_words)})
 
     return output
-    
-@cached_file_object('.corrected_transcript')        
+
+@cached_file_object('.corrected_transcript')
 def correct_transcript(video_path: str, raw_transcript: list, nouns: str) -> str:
-    """Correct transcript using LLM and noun list"""
+    """
+    Corrects transcript using LLM and noun list.
+    
+    This function standardizes nouns in the transcript using AI-based phonetic similarity.
+    
+    Args:
+        video_path (str): Path to the video file (used for caching).
+        raw_transcript (list): The raw transcript to correct.
+        nouns (str): The list of nouns to use for correction.
+        
+    Returns:
+        str: The corrected transcript.
+    """
     try:
         nouns_list = flatten_texts(nouns)
         return standardize_nouns_ai(raw_transcript, nouns_list)
     except Exception as e:
         print(f"Error correcting transcript: {e}")
-        traceback.print_exc()            
+        traceback.print_exc()
         return None
