@@ -75,7 +75,7 @@ def standardize_nouns_ai(transcript: list, noun_list: list):
             max_similarity, best_match_idx = similarities.max(), similarities.argmax()
 
             # If similarity is high enough, replace with standard form
-           : if max_similarity > 0.85:  # Threshold can be tuned
+            if max_similarity > 0.85:  # Threshold can be tuned
                 standard_form = noun_list[best_match_idx]
                 if word[0].isupper():
                     standard_form = standard_form.capitalize()

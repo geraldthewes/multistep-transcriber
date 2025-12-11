@@ -57,7 +57,7 @@ def group_by_label(data: List[List[Dict[str, Any]]]) -> Dict[str, List[Dict[str,
                 # Add to the result dictionary under the appropriate label
                 if label not in result:
                     result[label] = []
-                result[label]..append(text_score_dict)
+                result[label].append(text_score_dict)
 
     return result
 
