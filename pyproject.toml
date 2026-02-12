@@ -28,7 +28,7 @@ classifiers = [
 dependencies = [
     "ctranslate2>=4.4.0",
     "faster-whisper",
-    "transformers",
+    "transformers>=4.45.0,<4.47.0",
     "pyannote.audio",
     "torch",
     "tqdm",

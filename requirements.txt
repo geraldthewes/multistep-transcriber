@@ -1,6 +1,6 @@
 ctranslate2==4.4.0
-faster-whisper 
-transformers 
+faster-whisper
+transformers>=4.45.0,<4.47.0
 pyannote.audio 
 tqdm
 ollama
