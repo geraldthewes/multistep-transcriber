@@ -69,9 +69,9 @@ mkdocs serve -a 0.0.0.0:8000
 
 | Target | Description |
 |---|---|
-| `make test` | Run all unit tests and build the wheel |
-| `make publish` | Run tests, build wheel, upload to private PyPI |
-| `make clean` | Remove `dist/`, `build/`, `*.egg-info/` |
+| `make test` | Run all unit tests and build the wheel (inside devcontainer) |
+| `make publish` | Run tests, build wheel, upload to private PyPI (inside devcontainer) |
+| `make clean` | Remove `dist/`, `build/`, `*.egg-info/` (inside devcontainer) |
 | `make docs` | Generate API docs and build MkDocs site |
 | `make docs-serve` | Serve documentation locally on port 8000 |
 | `make docs-api` | Generate API documentation with lazydocs |
@@ -89,9 +89,10 @@ This project uses [DevPod](https://devpod.sh/) with a devcontainer for a consist
 # Launch the devcontainer
 make devcontainer
 
-# Once inside the container:
+# Run from the host — these execute inside the devcontainer via devpod ssh
 make test      # Run tests and build wheel
 make publish   # Test, build, and upload to private PyPI
+make clean     # Remove build artifacts
 
 # Lifecycle management
 make stop      # Stop the devcontainer

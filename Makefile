@@ -1,5 +1,9 @@
 .PHONY: docs docs-serve docs-api test publish clean devcontainer stop delete
 
+DEVCONTAINER_NAME ?= multistep-transcriber
+WORKSPACE_DIR ?= /workspaces/multistep-transcriber
+PYPI_URL ?= http://pypi.cluster:9999/
+
 # Generate API documentation using lazydocs
 # Requires: conda activate mst (or environment with all dependencies)
 docs-api:
@@ -22,16 +26,14 @@ docs-serve:
 	mkdocs serve -a 0.0.0.0:8000
 
 test:
-	./test.sh
+	devpod ssh $(DEVCONTAINER_NAME) --command "cd $(WORKSPACE_DIR) && ./test.sh"
 
 clean:
-	rm -rf dist/ build/ *.egg-info
+	devpod ssh $(DEVCONTAINER_NAME) --command "cd $(WORKSPACE_DIR) && rm -rf dist/ build/ *.egg-info"
 
-PYPI_URL ?= http://pypi.cluster:9999/
 publish: test
-	twine upload --repository-url $(PYPI_URL) dist/*
+	devpod ssh $(DEVCONTAINER_NAME) --command "cd $(WORKSPACE_DIR) && twine upload --repository-url $(PYPI_URL) dist/*"
 
-DEVCONTAINER_NAME ?= multistep-transcriber
 devcontainer:
 	devpod up $(DEVCONTAINER_NAME) --provider nomad
 
