@@ -5,6 +5,8 @@ DEVCONTAINER_SRC ?= github.com/geraldthewes/multistep-transcriber
 WORKSPACE_DIR ?= /workspaces/multistep-transcriber
 PYPI_URL ?= http://pypi.cluster:9999/
 
+REMOTE_EXEC = devpod ssh $(DEVCONTAINER_NAME) --command "cd $(WORKSPACE_DIR) && { set -a; . .vault-secrets 2>/dev/null; set +a; } &&
+
 # Generate API documentation using lazydocs
 # Requires: conda activate mst (or environment with all dependencies)
 docs-api:
@@ -27,13 +29,13 @@ docs-serve:
 	mkdocs serve -a 0.0.0.0:8000
 
 test:
-	devpod ssh $(DEVCONTAINER_NAME) --command "cd $(WORKSPACE_DIR) && ./test.sh"
+	$(REMOTE_EXEC) ./test.sh"
 
 clean:
-	devpod ssh $(DEVCONTAINER_NAME) --command "cd $(WORKSPACE_DIR) && rm -rf dist/ build/ *.egg-info"
+	$(REMOTE_EXEC) rm -rf dist/ build/ *.egg-info"
 
 publish: test
-	devpod ssh $(DEVCONTAINER_NAME) --command "cd $(WORKSPACE_DIR) && twine upload --repository-url $(PYPI_URL) dist/*"
+	$(REMOTE_EXEC) twine upload --repository-url $(PYPI_URL) dist/*"
 
 devcontainer:
 	devpod up $(DEVCONTAINER_SRC) --provider nomad --ide none

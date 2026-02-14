@@ -1,5 +1,12 @@
 #!/bin/bash
 
+# Source Vault secrets (needed for non-interactive shells like devpod ssh)
+if [ -f .vault-secrets ]; then
+    set -a
+    . .vault-secrets
+    set +a
+fi
+
 # Run unit tests
 echo "Running unit tests..."
 
