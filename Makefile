@@ -1,6 +1,7 @@
 .PHONY: docs docs-serve docs-api test publish clean devcontainer stop delete
 
 DEVCONTAINER_NAME ?= multistep-transcriber
+DEVCONTAINER_SRC ?= github.com/geraldthewes/multistep-transcriber
 WORKSPACE_DIR ?= /workspaces/multistep-transcriber
 PYPI_URL ?= http://pypi.cluster:9999/
 
@@ -35,7 +36,7 @@ publish: test
 	devpod ssh $(DEVCONTAINER_NAME) --command "cd $(WORKSPACE_DIR) && twine upload --repository-url $(PYPI_URL) dist/*"
 
 devcontainer:
-	devpod up $(DEVCONTAINER_NAME) --provider nomad
+	devpod up $(DEVCONTAINER_SRC) --provider nomad --ide none
 
 stop:
 	devpod stop $(DEVCONTAINER_NAME)
