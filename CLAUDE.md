@@ -75,6 +75,9 @@ mkdocs serve -a 0.0.0.0:8000
 | `make docs` | Generate API docs and build MkDocs site |
 | `make docs-serve` | Serve documentation locally on port 8000 |
 | `make docs-api` | Generate API documentation with lazydocs |
+| `make devcontainer` | Launch the DevPod devcontainer (Nomad provider) |
+| `make stop` | Stop the devcontainer |
+| `make delete` | Delete the devcontainer |
 
 ## Development Environment
 
@@ -84,11 +87,15 @@ This project uses [DevPod](https://devpod.sh/) with a devcontainer for a consist
 
 ```bash
 # Launch the devcontainer
-devpod up multistep-transcriber
+make devcontainer
 
 # Once inside the container:
 make test      # Run tests and build wheel
 make publish   # Test, build, and upload to private PyPI
+
+# Lifecycle management
+make stop      # Stop the devcontainer
+make delete    # Delete the devcontainer
 ```
 
 ### Environment Variables

@@ -1,4 +1,4 @@
-.PHONY: docs docs-serve docs-api test publish clean
+.PHONY: docs docs-serve docs-api test publish clean devcontainer stop delete
 
 # Generate API documentation using lazydocs
 # Requires: conda activate mst (or environment with all dependencies)
@@ -30,3 +30,13 @@ clean:
 PYPI_URL ?= http://pypi.cluster:9999/
 publish: test
 	twine upload --repository-url $(PYPI_URL) dist/*
+
+DEVCONTAINER_NAME ?= multistep-transcriber
+devcontainer:
+	devpod up $(DEVCONTAINER_NAME) --provider nomad
+
+stop:
+	devpod stop $(DEVCONTAINER_NAME)
+
+delete:
+	devpod delete $(DEVCONTAINER_NAME)
