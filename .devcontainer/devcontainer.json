@@ -10,7 +10,9 @@
 	"OLLAMA_HOST": "http://ollama.cluster:11434",
 	"OPENAI_API_KEY": "***",
 	"OPENAI_MODEL": "QuantTrio/Qwen3-Coder-30B-A3B-Instruct-AWQ",
-	"OPENAI_BASE_URL":"http://vllm.cluster:8000/v1",
-	
+	"OPENAI_BASE_URL": "http://vllm.cluster:8000/v1",
+	"VAULT_ADDR": "http://vault.service.consul:8200",
+	"VAULT_POLICIES_JSON": "[\"transcription-policy\"]",
+	"VAULT_SECRETS_JSON": "[{\"path\":\"secret/data/hf/transcription\",\"fields\":{\"token\":\"HF_TOKEN\"}}]"
   }
 }
