@@ -32,7 +32,7 @@ pip install torchcodec==0.7.0 --no-cache-dir
 # Other Packages
 pip install -r requirements.txt
 pip install git+https://github.com/geraldthewes/topic-treeseg.git
-pip install build
+pip install build twine
 
 # Install Spacy model
 python -m spacy download en_core_web_sm

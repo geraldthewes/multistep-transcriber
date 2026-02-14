@@ -34,19 +34,76 @@ pip install .
 ```
 
 ### Testing
-```bash
-# Run main transcriber tests
-python -m unittest test_transcriber.py
 
-# Run helper function tests
+```bash
+# Full test suite + wheel build (recommended)
+make test
+# or directly:
+./test.sh
+
+# Individual test suites
+python -m unittest test_transcriber.py
 python -m unittest mst/steps/tests/test_helpers.py
 ```
 
+### Publishing
+
+```bash
+# Run tests, build wheel, and upload to private PyPI (http://pypi.cluster:9999/)
+make publish
+
+# If authentication is required:
+export TWINE_USERNAME=your_username
+export TWINE_PASSWORD=your_password
+make publish
+```
+
 ### Documentation
+
 ```bash
 # Serve documentation locally
 mkdocs serve -a 0.0.0.0:8000
 ```
+
+### Build Targets
+
+| Target | Description |
+|---|---|
+| `make test` | Run all unit tests and build the wheel |
+| `make publish` | Run tests, build wheel, upload to private PyPI |
+| `make clean` | Remove `dist/`, `build/`, `*.egg-info/` |
+| `make docs` | Generate API docs and build MkDocs site |
+| `make docs-serve` | Serve documentation locally on port 8000 |
+| `make docs-api` | Generate API documentation with lazydocs |
+
+## Development Environment
+
+This project uses [DevPod](https://devpod.sh/) with a devcontainer for a consistent development environment.
+
+### Getting Started
+
+```bash
+# Launch the devcontainer
+devpod up multistep-transcriber
+
+# Once inside the container:
+make test      # Run tests and build wheel
+make publish   # Test, build, and upload to private PyPI
+```
+
+### Environment Variables
+
+The devcontainer automatically sets:
+
+| Variable | Value |
+|---|---|
+| `PYTHONPATH` | Container workspace folder |
+| `OLLAMA_HOST` | `http://ollama.cluster:11434` |
+| `OPENAI_BASE_URL` | `http://vllm.cluster:8000/v1` |
+| `OPENAI_MODEL` | Model served by vLLM |
+| `OPENAI_API_KEY` | Set via `remoteEnv` |
+
+Additional secrets (e.g., `TWINE_USERNAME`, `TWINE_PASSWORD`) can be placed in `.vault-secrets` at the project root. This file is sourced automatically on shell startup via `post-setup.sh`.
 
 ## Architecture
 

@@ -1,0 +1,7 @@
+# .devpod/nomad.yaml
+nomad_cpu: "2000"
+nomad_memorymb: "8192"
+nomad_diskmb: "512"
+nomad_gpu: true
+nomad_gpu_compute_capability: "7.0"
+

@@ -21,8 +21,9 @@ else
     exit 1
 fi
 
-# If all tests pass, create the Python wheel
+# If all tests pass, clean old artifacts and create the Python wheel
 echo "All tests passed. Creating Python wheel..."
+rm -rf dist/ build/
 if python -m build; then
     echo "✓ Python wheel created successfully"
     echo "Wheel file(s) created in dist/ directory"

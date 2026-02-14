@@ -1,4 +1,4 @@
-.PHONY: docs docs-serve docs-api
+.PHONY: docs docs-serve docs-api test publish clean
 
 # Generate API documentation using lazydocs
 # Requires: conda activate mst (or environment with all dependencies)
@@ -20,3 +20,13 @@ docs: docs-api
 
 docs-serve:
 	mkdocs serve -a 0.0.0.0:8000
+
+test:
+	./test.sh
+
+clean:
+	rm -rf dist/ build/ *.egg-info
+
+PYPI_URL ?= http://pypi.cluster:9999/
+publish: test
+	twine upload --repository-url $(PYPI_URL) dist/*
