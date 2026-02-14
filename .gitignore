@@ -1,4 +1,5 @@
 .devcontainer/.env
+.vault-secrets
 dist/
 build/
 *.egg-info/

@@ -8,15 +8,19 @@ image_tags:
 registry_url: registry.cluster:5000
 test:
   commands:
-   - python -m unittest test_transcriber.py
+    - python -m unittest test_transcriber.py
   gpu_required: false
   env:
-   - OLLAMA_HOST=http://ollama.cluster:11434
+    OLLAMA_HOST: "http://ollama.cluster:11434"
   vault_policies: ["transcription-policy"]
   vault_secrets:
-  - path: "secret/data/hf/transcription"
-    fields:
-      token: "HF_TOKEN"
+    - path: "secret/data/hf/transcription"
+      fields:
+        token: "HF_TOKEN"
+    - path: "secret/data/pypiserver/credentials"
+      fields:
+        username: "TWINE_USERNAME"
+        password: "TWINE_PASSWORD"
 resource_limits:
   build:
     cpu: "8000"

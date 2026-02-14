@@ -5,3 +5,15 @@ nomad_diskmb: "512"
 nomad_gpu: true
 nomad_gpu_compute_capability: "7.0"
 
+vault_addr: "http://vault.service.consul:8200"
+vault_policies:
+  - "transcription-policy"
+vault_secrets:
+  - path: "secret/data/hf/transcription"
+    fields:
+      token: "HF_TOKEN"
+  - path: "secret/data/pypiserver/credentials"
+    fields:
+      username: "TWINE_USERNAME"
+      password: "TWINE_PASSWORD"
+
