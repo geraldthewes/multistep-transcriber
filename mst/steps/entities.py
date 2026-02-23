@@ -8,6 +8,7 @@ from typing import List, Dict, Any
 from gliner import GLiNER
 
 from ollama import chat
+from openai import OpenAI
 from pydantic import BaseModel
 
 from .caching import cached_file, cached_file_object
@@ -17,7 +18,20 @@ from .models import NounList
 Handles Named Entity Recognition (NER) tasks for transcript processing.
 """
 
+ENTITY_MODEL = "urchade/gliner_medium-v2.1"
+
 _entity_model = None
+
+# LLM Configuration
+LLM_PROVIDER = os.getenv("LLM_PROVIDER", "openai")  # "ollama" or "openai"
+OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "http://glm-flash.cluster:9999/v1")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "not-needed")
+SIMILAR_NAMES_MODEL = os.getenv("SIMILAR_NAMES_MODEL", "glm-4.7-flash")  # Default model
+
+# Create OpenAI client for OpenAI-compatible endpoints
+llm_client = None
+if LLM_PROVIDER == "openai":
+    llm_client = OpenAI(base_url=OPENAI_BASE_URL, api_key=OPENAI_API_KEY)
 
 def get_entity_model():
     """
@@ -28,7 +42,7 @@ def get_entity_model():
     """
     global _entity_model
     if _entity_model is None:
-        _entity_model = GLiNER.from_pretrained("urchade/gliner_medium-v2.1")
+        _entity_model = GLiNER.from_pretrained(ENTITY_MODEL)
     return _entity_model
 
 def group_by_label(data: List[List[Dict[str, Any]]]) -> Dict[str, List[Dict[str, Any]]]:
@@ -100,15 +114,13 @@ def merge_duplicate_texts(data: Dict[str, List[Dict[str, Any]]]) -> Dict[str, Li
 
     return result
 
-SIMILAR_NAMES_MODEL = "gemma3:27b"
-
 def merge_similar_texts(data: Dict[str, List[Dict[str, Any]]]) -> Dict[str, List[Dict[str, Any]]]:
     """
     Merges similar entity texts using AI to select canonical spellings.
-    
+
     Args:
         data (Dict[str, List[Dict[str, Any]]]): Entities grouped by label.
-        
+
     Returns:
         Dict[str, List[Dict[str, Any]]]: Entities with similar texts merged.
     """
@@ -128,12 +140,21 @@ def merge_similar_texts(data: Dict[str, List[Dict[str, Any]]]) -> Dict[str, List
         entities = "- " + "\n- ".join(entity["text"] for entity in entries)
         #print(entities)
 
-        response = chat(model=SIMILAR_NAMES_MODEL,
-                        messages=[{'role':'user', 'content':prompt + entities}],
-                        format=NounList.model_json_schema())
+        # Use appropriate LLM client based on provider
+        if LLM_PROVIDER == "ollama":
+            response = chat(model=SIMILAR_NAMES_MODEL,
+                            messages=[{'role':'user', 'content':prompt + entities}],
+                            format=NounList.model_json_schema())
+            reduced_entities = NounList.model_validate_json(response.message.content)
+        else:
+            response = llm_client.chat.completions.create(
+                model=SIMILAR_NAMES_MODEL,
+                messages=[{'role':'user', 'content':prompt + entities}],
+                response_format={"type": "json_object"}
+            )
+            reduced_entities = NounList.model_validate_json(response.choices[0].message.content)
 
         #print(response.message.content)
-        reduced_entities = NounList.model_validate_json(response.message.content)
         #print(reduced_entities)
         data[label] = [{'text': text} for text in reduced_entities.nouns]
         #print(data[label])

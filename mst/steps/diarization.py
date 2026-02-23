@@ -12,6 +12,8 @@ from .caching import cached_file_object
 Module for speaker diarization using pyannote.audio.
 """
 
+DIARIZATION_MODEL="pyannote/speaker-diarization-3.1"
+
 _diarization_pipeline = None
 
 def get_diarization_pipeline():
@@ -21,7 +23,7 @@ def get_diarization_pipeline():
     Returns:
         Pipeline: The initialized pyannote diarization pipeline.
     """
-    diarization_model = "pyannote/speaker-diarization-3.1"
+    diarization_model = DIARIZATION_MODEL
     global _diarization_pipeline
     if _diarization_pipeline is None:
         _diarization_pipeline = Pipeline.from_pretrained(
