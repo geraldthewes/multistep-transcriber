@@ -100,3 +100,177 @@ I've successfully fixed the speaker identification error in the multistep-transc
   The fix ensures that the speaker identification functionality works reliably across different versions of the pyannote.audio
   library, making the code more robust and backward-compatible.
 
+
+  Investigation Result: lazydocs is not suitable for the mst package due to:
+
+  1. Python 3.13 Incompatibility: lazydocs 0.4.8 uses the deprecated find_module API removed in Python 3.12+ (https://github.com/Project-MONAI/MONAI/issues/7458)
+  2. Heavy Import Dependencies: lazydocs must import modules to introspect them, requiring torch and all other dependencies to be installed
+
+  Recommendation: Your current mkdocstrings setup is actually the better approach because:
+  - It works with Python 3.13
+  - It generates docs at build time (doesn't require importing the full package with all dependencies)
+  - It integrates natively with MkDocs Material theme
+  - Your docstrings are already 90%+ Google-style formatted
+
+  The existing documentation system at mkdocs.yml:67-86 is well-configured and should continue to work well. I've cleaned up the files lazydocs created.
+
+● Done! Committed successfully.
+
+  Summary
+
+  Commit f32aa73: Add lazydocs API documentation generation
+
+  Changes:
+
+  1. Makefile - Added docs-api target:
+    - make docs-api - Generates API docs with lazydocs
+    - make docs - Now runs docs-api before mkdocs build
+  2. Bug fixes:
+    - mst/steps/entities.py:60 - Fixed .. → .
+    - mst/steps/standardize.py:78 - Fixed stray colon and indentation
+  3. New files - 15 markdown files in docs/api/:
+    - README.md - API overview
+    - mst.VideoTranscriber.md - Main class documentation
+    - steps.*.md - All step module documentation
+
+  Usage
+
+  # Activate environment with dependencies
+  conda activate mst
+
+  # Generate API docs only
+  make docs-api
+
+  # Generate API docs + build mkdocs site
+  make docs
+
+    Project Nature: More than just a library
+
+    This is a full-featured video/audio transcription service with multiple components:
+
+    Library Component (mst/ package)
+     - Core library with VideoTranscriber class that orchestrates a multi-step transcription pipeline
+     - 12+ processing steps: transcription, sentence merging, entity extraction, correction, diarization, introductions, topic segmentation, formatting
+     - Programmatic Python API for integration into other projects
+
+    Standalone Scripts (CLI tools)
+     - ingestion.py - Batch processing pipeline with CLI arguments
+     - topic_segment.py - Standalone topic segmentation
+     - merge_transcript_segments.py - Sentence merging utility
+     - yt-download.py / yt-transcript.py - YouTube content processing
+
+    DevOps/Deployment Infrastructure
+     - deploy/build.yaml - Jobforge configuration for Docker image building
+     - debug.sh, post-setup.sh, test.sh - Development setup and testing scripts
+     - .devcontainer/ - VS Code devcontainer configuration
+     - Docker build configuration (via jobforge)
+
+    Documentation System
+     - MkDocs with Material theme
+     - API documentation generation via lazydocs
+     - Comprehensive planning docs and conventions
+
+    Conclusion
+
+    It's both a library AND a service:
+     - As a library: from mst import VideoTranscriber for programmatic use
+     - As a service: Standalone CLI scripts, batch processing, deployable Docker images
+
+    The project README calls it a "package" which is accurate - it's a Python package that can be installed and used both as a library and as command-line tools.
+
+
+  │   Testing Plan for multistep-transcriber                                                                                                                             │
+  │                                                                                                                                                                      │
+  │   Current State                                                                                                                                                      │
+  │                                                                                                                                                                      │
+  │   Based on my review of the codebase, here's what I found:                                                                                                           │
+  │                                                                                                                                                                      │
+  │   Testing Documentation & Scripts                                                                                                                                    │
+  │                                                                                                                                                                      │
+  │    1. Unit Tests - Two test files exist:                                                                                                                             │
+  │       - test_transcriber.py - Main integration tests (4 tests covering transcription, topics, output, and markdown retrieval)                                        │
+  │       - mst/steps/tests/test_helpers.py - Unit tests for helper functions (mapping speakers, sentence merging, compression)                                          │
+  │                                                                                                                                                                      │
+  │    2. Test Scripts:                                                                                                                                                  │
+  │       - test.sh - Automated test runner that executes both test suites and builds the Python wheel                                                                   │
+  │       - Makefile - Has docs-api and docs-serve targets for documentation                                                                                             │
+  │                                                                                                                                                                      │
+  │    3. Dev Container:                                                                                                                                                 │
+  │       - .devcontainer/devcontainer.json - Configured to use a GPU-enabled container image                                                                            │
+  │       - post-setup.sh - Sets up the environment (Python, PyTorch, dependencies)                                                                                      │
+  │                                                                                                                                                                      │
+  │   What's Missing                                                                                                                                                     │
+  │                                                                                                                                                                      │
+  │    - No continuous integration (CI) configuration (GitHub Actions, etc.)                                                                                             │
+  │    - No pytest setup (tests use unittest)                                                                                                                            │
+  │    - No test coverage reporting                                                                                                                                      │
+  │    - The test in test_transcriber.py requires a WAV file at data/5rmAy8fgYsY_audio.wav (this file exists in the repo)                                                │
+  │                                                                                                                                                                      │
+  │   How to Test                                                                                                                                                        │
+  │                                                                                                                                                                      │
+  │   Option 1: Run existing tests locally                                                                                                                               │
+  │    1 # Set required environment variables                                                                                                                            │
+  │    2 export HF_TOKEN=your_token                                                                                                                                      │
+  │    3 export OLLAMA_HOST=your_ollama_server                                                                                                                           │
+  │    4                                                                                                                                                                 │
+  │    5 # Run tests                                                                                                                                                     │
+  │    6 python -m unittest test_transcriber.py                                                                                                                          │
+  │    7 python -m unittest mst/steps/tests/test_helpers.py                                                                                                              │
+  │                                                                                                                                                                      │
+  │   Option 2: Use test script                                                                                                                                          │
+  │    1 ./test.sh                                                                                                                                                       │
+  │                                                                                                                                                                      │
+  │   Option 3: Use dev container                                                                                                                                        │
+  │    1 devpod up github.com/geraldthewes/multistep-transcriber \                                                                                                       │
+  │    2     --provider nomad \                                                                                                                                          │
+  │    3     --ide none \                                                                                                                                                │
+  │    4     --provider-option NOMAD_CPU=2000 \                                                                                                                          │
+  │    5     --provider-option NOMAD_MEMORYMB=8192 \                                                                                                                     │
+  │    6     --provider-option NOMAD_DISKMB=512                                                                                                                          │
+  │                                                                                                                                                                      │
+  │   Recommendations                                                                                                                                                    │
+  │                                                                                                                                                                      │
+  │    1. Add a .env.template file documenting required environment variables                                                                                            │
+  │    2. Add CI (GitHub Actions) to run tests automatically                                                                                                             │
+  │    3. Add test coverage reporting                                                                                                                                    │
+  │    4. Consider making tests more isolated (currently they require actual GPU models to run)                                                                          │
+  │
+
+
+  Changes Made                                                                                                                                                                 
+                                                                                                                                                                               
+  1. mst/steps/topic_segmentation.py                                                                                                                                           
+                                                                                                                                                                               
+  - Added OpenAI SDK import              
+  - Added LLM configuration constants (environment variable based):
+    - LLM_PROVIDER - defaults to "openai"
+    - OPENAI_BASE_URL - defaults to http://glm-flash.cluster:9999/v1
+    - OPENAI_API_KEY - defaults to "not-needed"
+    - TOPIC_MODEL - defaults to "glm-4.7-flash"
+  - Created OpenAI client instance when provider is "openai"
+  - Modified _generate_topic_outputs() to use either the ollama library or OpenAI SDK based on the provider setting
+
+  2. mst/steps/entities.py
+
+  - Added OpenAI SDK import
+  - Added LLM configuration constants:
+    - LLM_PROVIDER - defaults to "openai"
+    - OPENAI_BASE_URL - defaults to http://glm-flash.cluster:9999/v1
+    - OPENAI_API_KEY - defaults to "not-needed"
+    - SIMILAR_NAMES_MODEL - defaults to "glm-4.7-flash"
+  - Created OpenAI client instance when provider is "openai"
+  - Modified merge_similar_texts() to use either the ollama library or OpenAI SDK based on the provider setting
+  - Made ENTITY_MODEL a constant variable for consistency
+
+  How to Use
+
+  To use OpenAI-compatible endpoint (default):
+  # No special setup needed - defaults are already set
+  python -m mst.VideoTranscriber your_video.wav
+
+  To use Ollama:
+  export LLM_PROVIDER=ollama
+  export OLLAMA_HOST=http://ollama.cluster:11434
+  python -m mst.VideoTranscriber your_video.wav
+
+  The implementation maintains backward compatibility with the existing Ollama-based code while adding support for OpenAI-compatible endpoints.

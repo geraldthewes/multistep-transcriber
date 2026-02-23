@@ -3,7 +3,7 @@
     "serena": {
       "command": "uvx",
       "args": [
-        "--from", 
+        "--from",
         "git+https://github.com/oraios/serena",
         "serena",
         "start-mcp-server",
@@ -17,7 +17,5 @@
   "model": {
     "sessionTokenLimit": " 131072"
   },
-  "$version": 2
+  "$version": 3
 }
-
-
