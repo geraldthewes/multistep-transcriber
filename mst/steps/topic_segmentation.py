@@ -1,30 +1,16 @@
 import os
-import json
-import torch
-import logging
-import traceback
-from typing import List, Dict, Any
+from typing import List
 
 from treeseg import TreeSeg
-from ollama import chat
-from openai import OpenAI
 
 from .caching import cached_file_object
+from .llm_client import get_llm_client
 
 """
 Module for segmenting transcripts into topics using TreeSeg.
 """
 
-# LLM Configuration
-LLM_PROVIDER = os.getenv("LLM_PROVIDER", "openai")  # "ollama" or "openai"
-OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "http://glm-flash.cluster:9999/v1")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "not-needed")
 TOPIC_MODEL = os.getenv("TOPIC_MODEL", "glm-4.7-flash")  # Default model
-
-# Create OpenAI client for OpenAI-compatible endpoints
-llm_client = None
-if LLM_PROVIDER == "openai":
-    llm_client = OpenAI(base_url=OPENAI_BASE_URL, api_key=OPENAI_API_KEY)
 
 EXTENSION_TOPICS = '.topics'
 
@@ -57,23 +43,11 @@ def _generate_topic_outputs(video_path: str, grouped_topic_texts: List[str], llm
             # Construct the full prompt using the template and the topic text
             full_prompt = f"{llm_prompt_template}\n\nTranscript section:\n{topic_text}"
 
-            # Use appropriate LLM client based on provider
-            if LLM_PROVIDER == "ollama":
-                response = chat(
-                    model=TOPIC_MODEL,
-                    messages=[
-                        {'role': 'user', 'content': full_prompt}
-                    ]
-                )
-                output_text = response.message.content.strip()
-            else:
-                response = llm_client.chat.completions.create(
-                    model=TOPIC_MODEL,
-                    messages=[
-                        {'role': 'user', 'content': full_prompt}
-                    ]
-                )
-                output_text = response.choices[0].message.content.strip()
+            llm_client = get_llm_client()
+            output_text = llm_client.chat(
+                model=TOPIC_MODEL,
+                messages=[{'role': 'user', 'content': full_prompt}]
+            ).strip()
             outputs.append(output_text)
             print(f"Generated LLM output for topic {i}: {output_text}")
         except Exception as e:
