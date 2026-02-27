@@ -117,7 +117,9 @@ def merge_similar_texts(
     if config is None:
         config = EntityConfig()
 
-    prompt = '''You are a talented copy editor. I have this list below of person names from a transcript, some names might be the same person with different spelling. I need you to reduce the list, arranged alphabetically that select the most appropriate unique spelling for each person name in the original list. '''
+    system_message = 'You are a JSON API. Respond only with valid JSON. Your output must be a JSON object with a single key "nouns" containing a list of strings. Do not include any other text, explanation, or keys.'
+
+    user_prompt = 'I have this list of person names from a transcript. Some names might refer to the same person with different spellings. Reduce the list by selecting the most appropriate unique spelling for each person, arranged alphabetically:\n\n'
 
     # Iterate through each label in the input data
     for label, entries in data.items():
@@ -128,12 +130,14 @@ def merge_similar_texts(
         entities = "- " + "\n- ".join(entity["text"] for entity in entries)
 
         llm_client = get_llm_client(llm_config)
-        response = llm_client.chat(
+        reduced_entities = llm_client.parse(
             model=config.similar_names_model,
-            messages=[{'role': 'user', 'content': prompt + entities}],
-            response_format={"type": "json_object"}
+            messages=[
+                {'role': 'system', 'content': system_message},
+                {'role': 'user', 'content': user_prompt + entities},
+            ],
+            response_model=NounList,
         )
-        reduced_entities = NounList.model_validate_json(response)
 
         data[label] = [{'text': text} for text in reduced_entities.nouns]
     return data
