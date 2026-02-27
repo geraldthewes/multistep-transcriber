@@ -1,46 +1,53 @@
-import os
-import json
-import torch
-import logging
 import traceback
-from typing import List, Dict, Any
-from faster_whisper import WhisperModel
+from typing import List, Dict, Any, Optional
 from sentence_transformers import SentenceTransformer, util
 
 from .caching import cached_file, cached_file_object
 from .helpers import flatten_texts
+from ..config import StandardizeConfig
 
 """
 Module for standardizing transcript text using AI-based phonetic similarity.
 """
 
-_noun_correction_model = None
+_noun_correction_models: Dict[str, SentenceTransformer] = {}
 
-def get_noun_correction_model():
+
+def get_noun_correction_model(model_name: str = "paraphrase-MiniLM-L6-v2") -> SentenceTransformer:
     """
     Gets or initializes the sentence transformer model for noun standardization.
-    
+
+    Args:
+        model_name: Name of the SentenceTransformer model to load.
+
     Returns:
         SentenceTransformer: The initialized sentence transformer model.
     """
-    global _noun_correction_model
-    if _noun_correction_model is None:
-        _noun_correction_model = SentenceTransformer('paraphrase-MiniLM-L6-v2')
-    return _noun_correction_model
+    if model_name not in _noun_correction_models:
+        _noun_correction_models[model_name] = SentenceTransformer(model_name)
+    return _noun_correction_models[model_name]
 
-def standardize_nouns_ai(transcript: list, noun_list: list):
+def standardize_nouns_ai(
+    transcript: list,
+    noun_list: list,
+    config: Optional[StandardizeConfig] = None,
+):
     """
     Standardizes nouns using AI-based phonetic similarity via embeddings, preserving line feeds.
-    
+
     Args:
         transcript (list): List of transcript segments with start, end, and transcript fields.
         noun_list (list): List of standard noun spellings.
-        
+        config: StandardizeConfig instance. If None, uses defaults.
+
     Returns:
         list: Standardized transcript segments with line feeds preserved.
     """
+    if config is None:
+        config = StandardizeConfig()
+
     # Load the model
-    noun_correction_model = get_noun_correction_model()
+    noun_correction_model = get_noun_correction_model(config.sentence_transformer_model)
 
     # Compute embeddings for standard nouns
     noun_embeddings = noun_correction_model.encode(noun_list, convert_to_tensor=True)
@@ -75,7 +82,7 @@ def standardize_nouns_ai(transcript: list, noun_list: list):
             max_similarity, best_match_idx = similarities.max(), similarities.argmax()
 
             # If similarity is high enough, replace with standard form
-            if max_similarity > 0.85:  # Threshold can be tuned
+            if max_similarity > config.similarity_threshold:
                 standard_form = noun_list[best_match_idx]
                 if word[0].isupper():
                     standard_form = standard_form.capitalize()
@@ -92,23 +99,29 @@ def standardize_nouns_ai(transcript: list, noun_list: list):
     return output
 
 @cached_file_object('.corrected_transcript')
-def correct_transcript(video_path: str, raw_transcript: list, nouns: str) -> str:
+def correct_transcript(
+    video_path: str,
+    raw_transcript: list,
+    nouns: str,
+    config: Optional[StandardizeConfig] = None,
+) -> str:
     """
     Corrects transcript using LLM and noun list.
-    
+
     This function standardizes nouns in the transcript using AI-based phonetic similarity.
-    
+
     Args:
         video_path (str): Path to the video file (used for caching).
         raw_transcript (list): The raw transcript to correct.
         nouns (str): The list of nouns to use for correction.
-        
+        config: StandardizeConfig instance. If None, uses defaults.
+
     Returns:
         str: The corrected transcript.
     """
     try:
         nouns_list = flatten_texts(nouns)
-        return standardize_nouns_ai(raw_transcript, nouns_list)
+        return standardize_nouns_ai(raw_transcript, nouns_list, config=config)
     except Exception as e:
         print(f"Error correcting transcript: {e}")
         traceback.print_exc()

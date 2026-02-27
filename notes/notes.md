@@ -274,3 +274,84 @@ I've successfully fixed the speaker identification error in the multistep-transc
   python -m mst.VideoTranscriber your_video.wav
 
   The implementation maintains backward compatibility with the existing Ollama-based code while adding support for OpenAI-compatible endpoints.
+
+
+ mst/steps/llm_client.py - New module with:                                              
+  - LLMClient abstract base class with chat() method                                      
+  - OllamaClient implementation wrapping the ollama.chat() function
+  - OpenAIClient implementation wrapping the OpenAI client                                
+  - get_llm_client() factory function that selects the appropriate client based on        
+  LLM_PROVIDER env var
+
+  Files Modified
+
+  mst/steps/entities.py
+
+  - Removed unused imports (json, torch, logging, BaseModel, cached_file, Any, traceback,
+  math)
+  - Removed LLM configuration module-level variables (LLM_PROVIDER, OPENAI_BASE_URL,
+  OPENAI_API_KEY, llm_client)
+  - Removed ollama and OpenAI imports
+  - Simplified merge_similar_texts() to use get_llm_client() instead of if/else logic
+
+  mst/steps/topic_segmentation.py
+
+  - Removed unused imports (json, torch, logging, traceback, Dict, Any)
+  - Removed LLM configuration module-level variables (LLM_PROVIDER, OPENAI_BASE_URL,
+  OPENAI_API_KEY, llm_client)
+  - Removed ollama and OpenAI imports
+  - Simplified _generate_topic_outputs() to use get_llm_client() instead of if/else logic
+
+  Verification Results
+
+  ✅ Ruff linter: All checks passed
+  ✅ Mypy type checking: No new errors introduced (existing errors are pre-existing)
+
+  The implementation successfully eliminates the duplicate if/else logic and provides a
+  clean abstraction for LLM provider handling. Callers now simply use get_llm_client() and
+   call the unified chat() method, regardless of which provider is configured.
+
+
+New File: mst/config.py                                                                                                                                 
+                            
+  Centralized Pydantic config with 8 sub-config classes and TranscriberConfig with a from_env() factory that reads the 6 previously scattered environment
+  variables.                
+
+  Modified Step Files
+
+  All changes are backward-compatible — existing callers with no config arg continue working:
+
+  ┌───────────────────────┬───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+  │         File          │                                                      Changes                                                      │
+  ├───────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ llm_client.py         │ `get_llm_client(config: LLMConfig                                                                                 │
+  ├───────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ transcription.py      │ Dict-based model cache keyed by name; initial_transcription(..., config)                                          │
+  ├───────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ merge_sentences.py    │ merge_transcript_segments(..., config) — model name from config                                                   │
+  ├───────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ entities.py           │ Dict-based model cache; removed module-level SIMILAR_NAMES_MODEL env read; extract_nouns(..., config, llm_config) │
+  ├───────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ standardize.py        │ Dict-based model cache; correct_transcript(..., config) — threshold from config                                   │
+  ├───────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ diarization.py        │ Dict-based pipeline cache; removed os.environ.get("HF_TOKEN"); identify_speakers(..., config)                     │
+  ├───────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ introductions.py      │ Removed MARGIN_IN_SECONDS constant; find_introductions(..., config), create_speaker_map(..., config)              │
+  ├───────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ topic_segmentation.py │ Removed module-level TOPIC_MODEL env read; prepare_and_generate_headlines/summary(..., config, llm_config)        │
+  └───────────────────────┴───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+  Modified: mst/video_transcriber.py
+
+  - Added config: TranscriberConfig | None = None to __init__; defaults to TranscriberConfig.from_env()
+  - All 10 pipeline steps now receive their relevant sub-config
+
+  Modified: mst/__init__.py
+
+  - Exports TranscriberConfig
+
+  New: mst/steps/tests/test_config.py
+
+  Unit tests for all sub-configs and TranscriberConfig including from_env() env var reading. Tests run in devcontainer with make test.
+
+                         

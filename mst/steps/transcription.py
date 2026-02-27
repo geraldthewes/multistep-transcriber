@@ -1,36 +1,41 @@
-import os
 import json
-import torch
 import logging
 import traceback
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from faster_whisper import WhisperModel
 
 
 from .caching import cached_file, cached_file_object
+from ..config import TranscriptionConfig
 
 """
 Performs transcription of audio to raw text using Whisper model.
 """
 
-_whisper_model = None
+_whisper_models: Dict[str, WhisperModel] = {}
 
-def get_whisper_model():
+
+def get_whisper_model(model_name: str = "distil-large-v3") -> WhisperModel:
     """
-    Gets or initializes the Whisper model.
+    Gets or initializes the Whisper model for the given model name.
+
+    Args:
+        model_name: Name of the Whisper model to load.
 
     Returns:
         WhisperModel: The initialized Whisper model instance.
     """
-    global _whisper_model
-    if _whisper_model is None:
-        _whisper_model = WhisperModel("distil-large-v3")
-        _whisper_model.logger.setLevel(logging.WARNING)
+    if model_name not in _whisper_models:
+        model = WhisperModel(model_name)
+        model.logger.setLevel(logging.WARNING)
+        _whisper_models[model_name] = model
+    return _whisper_models[model_name]
 
-    return _whisper_model
 
 @cached_file_object('.raw_transcript')
-def initial_transcription(video_path: str) -> List[Dict[str, Any]]:
+def initial_transcription(
+    video_path: str, config: Optional[TranscriptionConfig] = None
+) -> List[Dict[str, Any]]:
     """
     Perform initial transcription using Whisper.
 
@@ -49,8 +54,10 @@ def initial_transcription(video_path: str) -> List[Dict[str, Any]]:
     Raises:
         Exception: If transcription fails for any reason.
     """
+    if config is None:
+        config = TranscriptionConfig()
     try:
-        whisper_model = get_whisper_model()
+        whisper_model = get_whisper_model(config.whisper_model)
 
         segments, info = whisper_model.transcribe(video_path)
         output_lines = []

@@ -1,29 +1,35 @@
-import os
-from typing import List
+from typing import List, Optional
 
 from treeseg import TreeSeg
 
 from .caching import cached_file_object
 from .llm_client import get_llm_client
+from ..config import TopicConfig, LLMConfig
 
 """
 Module for segmenting transcripts into topics using TreeSeg.
 """
 
-TOPIC_MODEL = os.getenv("TOPIC_MODEL", "glm-4.7-flash")  # Default model
-
 EXTENSION_TOPICS = '.topics'
 
-def _generate_topic_outputs(video_path: str, grouped_topic_texts: List[str], llm_prompt_template: str) -> List[str]:
+def _generate_topic_outputs(
+    video_path: str,
+    grouped_topic_texts: List[str],
+    llm_prompt_template: str,
+    topic_model: str = "glm-4.7-flash",
+    llm_config: Optional[LLMConfig] = None,
+) -> List[str]:
     """
     Generates an output (e.g., headline, summary) for each topic's concatenated transcript text using an LLM and a given prompt.
-    
+
     Args:
         video_path (str): Path to the video file (can be used for context or logging).
         grouped_topic_texts (List[str]): A list where each string is the
                                          concatenated transcript for a topic.
         llm_prompt_template (str): The prompt template to use for the LLM. The topic text will be appended to this.
-        
+        topic_model (str): The LLM model name to use for generation.
+        llm_config: LLMConfig instance. If None, uses defaults.
+
     Returns:
         List[str]: A list of generated outputs, corresponding to each topic.
     """
@@ -43,9 +49,9 @@ def _generate_topic_outputs(video_path: str, grouped_topic_texts: List[str], llm
             # Construct the full prompt using the template and the topic text
             full_prompt = f"{llm_prompt_template}\n\nTranscript section:\n{topic_text}"
 
-            llm_client = get_llm_client()
+            llm_client = get_llm_client(llm_config)
             output_text = llm_client.chat(
-                model=TOPIC_MODEL,
+                model=topic_model,
                 messages=[{'role': 'user', 'content': full_prompt}]
             ).strip()
             outputs.append(output_text)
@@ -56,7 +62,13 @@ def _generate_topic_outputs(video_path: str, grouped_topic_texts: List[str], llm
 
     return outputs
 
-def _create_outputs_from_transcript_topics(video_path: str, updated_transcript_with_topics: List[dict], llm_prompt: str) -> List[str] | None:
+def _create_outputs_from_transcript_topics(
+    video_path: str,
+    updated_transcript_with_topics: List[dict],
+    llm_prompt: str,
+    topic_model: str = "glm-4.7-flash",
+    llm_config: Optional[LLMConfig] = None,
+) -> List[str] | None:
     """
     Internal helper to prepare transcript text grouped by topic and generate outputs (e.g., headlines)
     using a specified LLM prompt. This function does not handle caching itself.
@@ -98,7 +110,9 @@ def _create_outputs_from_transcript_topics(video_path: str, updated_transcript_w
                 print(f"Warning: Encountered topic index {topic_idx} outside expected range [0, {max_topic_val}] during text preparation.")
 
     if grouped_texts_for_llm:
-        return _generate_topic_outputs(video_path, grouped_texts_for_llm, llm_prompt)
+        return _generate_topic_outputs(
+            video_path, grouped_texts_for_llm, llm_prompt, topic_model=topic_model, llm_config=llm_config
+        )
     elif not topic_numbers: # Already printed "No topics found..."
         # This case implies no topics, so no texts, and thus no outputs.
         pass
@@ -106,43 +120,64 @@ def _create_outputs_from_transcript_topics(video_path: str, updated_transcript_w
         print("No text content found for topics, skipping LLM output generation.")
     return None # Or [] if an empty list is preferred over None for "no output generated"
 
-HEADLINE_PROMPT = "You are a talented local reporter. You have been asked to provide a single descriptive headline to introduce the following section of a transcript from a town meeting for the town audience. Only return the headline with no justification or explanation."
-
 @cached_file_object('.topic_headlines')
-def prepare_and_generate_headlines(video_path: str, updated_transcript_with_topics: List[dict]):
+def prepare_and_generate_headlines(
+    video_path: str,
+    updated_transcript_with_topics: List[dict],
+    config: Optional[TopicConfig] = None,
+    llm_config: Optional[LLMConfig] = None,
+):
     """
-    Prepares transcript text grouped by topic and generates headlines using the default prompt.
-    
-    This function prepares transcript text grouped by topic and generates headlines
-    using the default prompt.
-    
+    Prepares transcript text grouped by topic and generates headlines.
+
     Args:
         video_path (str): Path to the video file.
         updated_transcript_with_topics (List[dict]): Transcript with topic assignments.
-        
+        config: TopicConfig instance. If None, uses defaults.
+        llm_config: LLMConfig instance. If None, uses defaults.
+
     Returns:
         List[str]: Generated headlines for each topic.
     """
-    return _create_outputs_from_transcript_topics(video_path, updated_transcript_with_topics, HEADLINE_PROMPT)
+    if config is None:
+        config = TopicConfig()
+    return _create_outputs_from_transcript_topics(
+        video_path,
+        updated_transcript_with_topics,
+        config.headline_prompt,
+        topic_model=config.topic_model,
+        llm_config=llm_config,
+    )
 
-SUMMARY_PROMPT = "You are a talented local reporter. You have been asked to provide a one or two sentence max descriptive summary of the the following section of a transcript from a town meeting for the town audience. Just return your proposed summary with no explanation or justification for your choice."
 
 @cached_file_object('.topic_summary')
-def prepare_and_generate_summary(video_path: str, updated_transcript_with_topics: List[dict]):
+def prepare_and_generate_summary(
+    video_path: str,
+    updated_transcript_with_topics: List[dict],
+    config: Optional[TopicConfig] = None,
+    llm_config: Optional[LLMConfig] = None,
+):
     """
-    Prepares transcript text grouped by topic and generates summaries using the default prompt.
-    
-    This function prepares transcript text grouped by topic and generates summaries
-    using the default prompt.
-    
+    Prepares transcript text grouped by topic and generates summaries.
+
     Args:
         video_path (str): Path to the video file.
         updated_transcript_with_topics (List[dict]): Transcript with topic assignments.
-        
+        config: TopicConfig instance. If None, uses defaults.
+        llm_config: LLMConfig instance. If None, uses defaults.
+
     Returns:
         List[str]: Generated summaries for each topic.
     """
-    return _create_outputs_from_transcript_topics(video_path, updated_transcript_with_topics, SUMMARY_PROMPT)
+    if config is None:
+        config = TopicConfig()
+    return _create_outputs_from_transcript_topics(
+        video_path,
+        updated_transcript_with_topics,
+        config.summary_prompt,
+        topic_model=config.topic_model,
+        llm_config=llm_config,
+    )
 
 @cached_file_object(EXTENSION_TOPICS)
 def segment_topics(video_path: str, entries: list, config: dict, max_segments: int) -> list:

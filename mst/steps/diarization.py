@@ -1,43 +1,47 @@
-import os
-import json
 import torch
-import logging
 import traceback
-from typing import List, Dict, Any
+from typing import Dict, Any, Optional
 from pyannote.audio import Pipeline
 
 from .caching import cached_file_object
+from ..config import DiarizationConfig
 
 """
 Module for speaker diarization using pyannote.audio.
 """
 
-DIARIZATION_MODEL="pyannote/speaker-diarization-3.1"
+_diarization_pipelines: Dict[str, Pipeline] = {}
 
-_diarization_pipeline = None
 
-def get_diarization_pipeline():
+def get_diarization_pipeline(config: Optional[DiarizationConfig] = None) -> Pipeline:
     """
-    Gets or initializes the pyannote diarization pipeline.
+    Gets or initializes the pyannote diarization pipeline for the given model.
+
+    Args:
+        config: DiarizationConfig instance. If None, uses defaults.
 
     Returns:
         Pipeline: The initialized pyannote diarization pipeline.
     """
-    diarization_model = DIARIZATION_MODEL
-    global _diarization_pipeline
-    if _diarization_pipeline is None:
-        _diarization_pipeline = Pipeline.from_pretrained(
-            diarization_model,
-            token=os.environ.get("HF_TOKEN")
+    if config is None:
+        config = DiarizationConfig()
+    model_name = config.diarization_model
+    if model_name not in _diarization_pipelines:
+        pipeline = Pipeline.from_pretrained(
+            model_name,
+            token=config.hf_token,
         )
-        # Check if CUDA is available, otherwise fall back to CPU
         device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-        _diarization_pipeline.to(device)
-
-    return _diarization_pipeline
+        pipeline.to(device)
+        _diarization_pipelines[model_name] = pipeline
+    return _diarization_pipelines[model_name]
 
 @cached_file_object('.diarization')
-def identify_speakers(video_path: str, transcript: str) -> dict:
+def identify_speakers(
+    video_path: str,
+    transcript: str,
+    config: Optional[DiarizationConfig] = None,
+) -> dict:
     """
     Performs speaker diarization and creates a mapping of speaker segments.
 
@@ -52,7 +56,7 @@ def identify_speakers(video_path: str, transcript: str) -> dict:
         dict: Dictionary containing speaker segment information.
     """
     try:
-        diarization_pipeline = get_diarization_pipeline()
+        diarization_pipeline = get_diarization_pipeline(config)
 
         # Perform diarization
         diarization = diarization_pipeline(video_path)

@@ -1,15 +1,11 @@
-import os
-import sys
-import json
-import torch
-import logging
-import argparse
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
 from .steps import *
 from .steps.topic_segmentation import EXTENSION_TOPICS
 from .steps.format import EXTENSION_MARKDOWN
 from .steps.caching import get_cache_file, load_object_file
+from .config import TranscriberConfig
+
 
 class VideoTranscriber:
     """
@@ -21,7 +17,11 @@ class VideoTranscriber:
     the flow of data between different processing steps.
     """
 
-    def __init__(self, topic_config=None):
+    def __init__(
+        self,
+        topic_config=None,
+        config: Optional[TranscriberConfig] = None,
+    ):
         """
         Initializes the VideoTranscriber.
 
@@ -29,9 +29,15 @@ class VideoTranscriber:
             topic_config (dict, optional): Configuration for topic segmentation.
                                            Defaults to None, in which case topic
                                            segmentation will be skipped.
+            config (TranscriberConfig, optional): Centralized configuration for all
+                                                   pipeline steps. If None, reads from
+                                                   environment variables via
+                                                   TranscriberConfig.from_env().
         """
-        # Initialize models
         self.topic_config = topic_config
+        if config is None:
+            config = TranscriberConfig.from_env()
+        self.config = config
 
     def transcribe_video(self, video_path: str, transcribe: bool = True) -> tuple:
         """
@@ -58,9 +64,11 @@ class VideoTranscriber:
                 - transcript_final (list): The final processed transcript with speaker information.
                 - nouns_list (list): A list of extracted nouns and entities.
         """
+        cfg = self.config
+
         if transcribe:
             print('Step 1: Initial transcription')
-            raw_transcript = initial_transcription(video_path)
+            raw_transcript = initial_transcription(video_path, config=cfg.transcription)
         else:
             # assume transcription already completed
             print('Skipping transcription step')
@@ -69,31 +77,29 @@ class VideoTranscriber:
             raw_transcript = load_object_file(cache_file)
 
         print('Step 2: Merge Sentences')
-        merged_segments = merge_transcript_segments(video_path, raw_transcript)
+        merged_segments = merge_transcript_segments(video_path, raw_transcript, config=cfg.merge_sentences)
 
         print('Step 3: Entity extraction')
-        nouns_list = extract_nouns(video_path, merged_segments)
+        nouns_list = extract_nouns(video_path, merged_segments, config=cfg.entities, llm_config=cfg.llm)
 
         print('Step 4: Transcript correction')
-        corrected_transcript = correct_transcript(video_path, merged_segments, nouns_list)
-        # print(corrected_transcript)
+        corrected_transcript = correct_transcript(video_path, merged_segments, nouns_list, config=cfg.standardize)
 
         print('Step 5: Diarization / Speaker identification')
-        speaker_mapping = identify_speakers(video_path, corrected_transcript)
-        #print(speaker_mapping)
+        speaker_mapping = identify_speakers(video_path, corrected_transcript, config=cfg.diarization)
 
         print('Step 6: Merge transcript and diarization')
-        merged_transcript = merge_transcript_diarization(video_path, corrected_transcript,  speaker_mapping )
+        merged_transcript = merge_transcript_diarization(video_path, corrected_transcript, speaker_mapping)
 
         print('Step 7: Compress merged transcript')
         compressed_transcript = compress_transcript(video_path, merged_transcript)
 
         print('Step 8: Filter transcript by speaker introductions')
         # Use raw transcript as sentence merge can cause timing mismatch
-        speaker_introductions = find_introductions(video_path, raw_transcript)
+        speaker_introductions = find_introductions(video_path, raw_transcript, config=cfg.introductions)
 
         print('Step 9: Extract persons from introductions')
-        speaker_map = create_speaker_map(video_path, speaker_introductions, speaker_mapping)
+        speaker_map = create_speaker_map(video_path, speaker_introductions, speaker_mapping, config=cfg.introductions)
 
         print('Step 10: Map speaker names')
         transcript_final = map_speakers(video_path, compressed_transcript, speaker_map)
@@ -123,8 +129,12 @@ class VideoTranscriber:
             return transcript, [], []
         processed_transcript = segment_topics(video_path, transcript, self.topic_config, max_topics)
         # Generate and cache topic headlines
-        topic_headlines = prepare_and_generate_headlines(video_path, processed_transcript)
-        topic_summary = prepare_and_generate_summary(video_path, processed_transcript)
+        topic_headlines = prepare_and_generate_headlines(
+            video_path, processed_transcript, config=self.config.topic, llm_config=self.config.llm
+        )
+        topic_summary = prepare_and_generate_summary(
+            video_path, processed_transcript, config=self.config.topic, llm_config=self.config.llm
+        )
 
         return processed_transcript, topic_headlines, topic_summary
 

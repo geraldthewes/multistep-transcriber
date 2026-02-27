@@ -28,6 +28,7 @@ __version__ = "0.1.0"  # Keep this in sync with the version in pyproject.toml
 
 # Expose key components for easier import by users of the package
 from .video_transcriber import VideoTranscriber
+from .config import TranscriberConfig
 
 # You can also expose other core functions/classes from submodules if desired, for example:
 # from .steps.transcription import initial_transcription

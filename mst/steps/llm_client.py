@@ -1,7 +1,9 @@
 from abc import ABC, abstractmethod
-import os
+from typing import Optional
 from openai import OpenAI
 from ollama import chat as ollama_chat
+
+from ..config import LLMConfig
 
 
 class LLMClient(ABC):
@@ -34,12 +36,14 @@ class OpenAIClient(LLMClient):
         return content
 
 
-def get_llm_client() -> LLMClient:
-    """Factory function to get the appropriate LLM client based on config."""
-    provider = os.getenv("LLM_PROVIDER", "openai")
-    if provider == "ollama":
-        return OllamaClient()
+def get_llm_client(config: Optional[LLMConfig] = None) -> LLMClient:
+    """Factory function to get the appropriate LLM client based on config.
 
-    base_url = os.getenv("OPENAI_BASE_URL", "http://glm-flash.cluster:9999/v1")
-    api_key = os.getenv("OPENAI_API_KEY", "not-needed")
-    return OpenAIClient(base_url, api_key)
+    Args:
+        config: LLMConfig instance. If None, uses default LLMConfig values.
+    """
+    if config is None:
+        config = LLMConfig()
+    if config.provider == "ollama":
+        return OllamaClient()
+    return OpenAIClient(config.openai_base_url, config.openai_api_key)

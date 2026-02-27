@@ -1,28 +1,31 @@
-import os
-import json
-import torch
-import logging
 import traceback
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from setfit import SetFitModel
 
 from .caching import cached_file_object
 from .entities import extract_persons
+from ..config import IntroductionsConfig
+
 
 @cached_file_object('.introductions')
-def find_introductions(video_path: str, transcripts):
+def find_introductions(
+    video_path: str,
+    transcripts,
+    config: Optional[IntroductionsConfig] = None,
+):
     ''' Identify segments that are speaker introductions using a trained setfit model '''
+    if config is None:
+        config = IntroductionsConfig()
     try:
-        intro_sentences = []
-        imodel = SetFitModel.from_pretrained("gerald29/setfit-bge-small-v1.5-sst2-8-shot-introduction")         
+        imodel = SetFitModel.from_pretrained(config.setfit_model)
         sentences = [item['transcript'] for item in transcripts]
         labels = imodel.predict(sentences)
         # Filter the transcripts where the corresponding label is 'introduction'
         filtered_transcripts = [transcript for transcript, label in zip(transcripts, labels) if label == 'introduction']
         return filtered_transcripts
     except Exception as e:
-         print(f"Error extracting speaker introductions: {e}")
-         return None
+        print(f"Error extracting speaker introductions: {e}")
+        raise
 
 
 def speaker_to_name(introductions: str):
@@ -111,15 +114,22 @@ def map_entities_to_speakers(video_path: str, ner_data, diarization_data, margin
     return results
 
 
-MARGIN_IN_SECONDS=1.0
-
 @cached_file_object('.speaker_map')
-def create_speaker_map(video_path: str, speaker_introductions, speaker_mapping):
-        ''' Create mapping betyween person name and diarization. '''
-        # first extract name from introductions
-        speaker_names = extract_persons(speaker_introductions)
-        # Now map name to diarization
-        speakers_diarization = map_entities_to_speakers(video_path, speaker_names, speaker_mapping, MARGIN_IN_SECONDS)
-        # Now create map of speaker to speaker_name
-        speakers = speaker_to_name(speakers_diarization)
-        return speakers
+def create_speaker_map(
+    video_path: str,
+    speaker_introductions,
+    speaker_mapping,
+    config: Optional[IntroductionsConfig] = None,
+):
+    ''' Create mapping between person name and diarization. '''
+    if config is None:
+        config = IntroductionsConfig()
+    # first extract name from introductions
+    speaker_names = extract_persons(speaker_introductions)
+    # Now map name to diarization
+    speakers_diarization = map_entities_to_speakers(
+        video_path, speaker_names, speaker_mapping, config.speaker_map_margin
+    )
+    # Now create map of speaker to speaker_name
+    speakers = speaker_to_name(speakers_diarization)
+    return speakers

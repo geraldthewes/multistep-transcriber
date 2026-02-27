@@ -1,33 +1,33 @@
-import os
 import traceback
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from gliner import GLiNER
 import math
 
 from .caching import cached_file_object
 from .models import NounList
 from .llm_client import get_llm_client
+from ..config import EntityConfig, LLMConfig
 
 """
 Handles Named Entity Recognition (NER) tasks for transcript processing.
 """
 
-ENTITY_MODEL = "urchade/gliner_medium-v2.1"
+_entity_models: Dict[str, GLiNER] = {}
 
-_entity_model = None
-SIMILAR_NAMES_MODEL = os.getenv("SIMILAR_NAMES_MODEL", "glm-4.7-flash")  # Default model
 
-def get_entity_model():
+def get_entity_model(model_name: str = "urchade/gliner_medium-v2.1") -> GLiNER:
     """
-    Gets or initializes the GLiNER entity model.
-    
+    Gets or initializes the GLiNER entity model for the given model name.
+
+    Args:
+        model_name: Name of the GLiNER model to load.
+
     Returns:
         GLiNER: The initialized GLiNER model instance.
     """
-    global _entity_model
-    if _entity_model is None:
-        _entity_model = GLiNER.from_pretrained(ENTITY_MODEL)
-    return _entity_model
+    if model_name not in _entity_models:
+        _entity_models[model_name] = GLiNER.from_pretrained(model_name)
+    return _entity_models[model_name]
 
 def group_by_label(data: List[List[Dict[str, Any]]]) -> Dict[str, List[Dict[str, Any]]]:
     """
@@ -98,20 +98,26 @@ def merge_duplicate_texts(data: Dict[str, List[Dict[str, Any]]]) -> Dict[str, Li
 
     return result
 
-def merge_similar_texts(data: Dict[str, List[Dict[str, Any]]]) -> Dict[str, List[Dict[str, Any]]]:
+def merge_similar_texts(
+    data: Dict[str, List[Dict[str, Any]]],
+    config: Optional[EntityConfig] = None,
+    llm_config: Optional[LLMConfig] = None,
+) -> Dict[str, List[Dict[str, Any]]]:
     """
     Merges similar entity texts using AI to select canonical spellings.
 
     Args:
         data (Dict[str, List[Dict[str, Any]]]): Entities grouped by label.
+        config: EntityConfig instance. If None, uses defaults.
+        llm_config: LLMConfig instance. If None, uses defaults.
 
     Returns:
         Dict[str, List[Dict[str, Any]]]: Entities with similar texts merged.
     """
-    # Initialize an empty dictionary to hold the results
+    if config is None:
+        config = EntityConfig()
+
     prompt = '''You are a talented copy editor. I have this list below of person names from a transcript, some names might be the same person with different spelling. I need you to reduce the list, arranged alphabetically that select the most appropriate unique spelling for each person name in the original list. '''
-
-
 
     # Iterate through each label in the input data
     for label, entries in data.items():
@@ -120,27 +126,25 @@ def merge_similar_texts(data: Dict[str, List[Dict[str, Any]]]) -> Dict[str, List
             continue
         # Process each entry in the list of entries for the current label
         entities = "- " + "\n- ".join(entity["text"] for entity in entries)
-        #print(entities)
 
-        llm_client = get_llm_client()
+        llm_client = get_llm_client(llm_config)
         response = llm_client.chat(
-            model=SIMILAR_NAMES_MODEL,
-            messages=[{'role':'user', 'content':prompt + entities}],
+            model=config.similar_names_model,
+            messages=[{'role': 'user', 'content': prompt + entities}],
             response_format={"type": "json_object"}
         )
         reduced_entities = NounList.model_validate_json(response)
 
-        #print(response)
-        #print(reduced_entities)
         data[label] = [{'text': text} for text in reduced_entities.nouns]
-        #print(data[label])
     return data
 
-# batch the requests to avoid memory issues
-batch_size =  500
-threshold = 0.65
-
-def extract_entities(labels: list, transcript: list, batch_size: int = 100) -> list or None:
+def extract_entities(
+    labels: list,
+    transcript: list,
+    batch_size: int = 100,
+    threshold: float = 0.65,
+    config: Optional[EntityConfig] = None,
+) -> list or None:
     """
     Extract proper nouns and technical terms from the transcript in batches
     to avoid memory issues with large transcripts.
@@ -161,10 +165,14 @@ def extract_entities(labels: list, transcript: list, batch_size: int = 100) -> l
         print("Warning: Empty transcript provided.")
         return [] # Return an empty list if there's nothing to process
 
+    if config is None:
+        config = EntityConfig()
+
     try:
         print("Initializing entity model...")
-        entity_model = get_entity_model()
+        entity_model = get_entity_model(config.gliner_model)
         print("Entity model initialized.")
+        threshold = config.entity_threshold
 
         # Prepare the list of sentences first
         transcript_sentences = [item['transcript'] for item in transcript if item.get('transcript')] # Ensure 'transcript' key exists and is not empty/None
@@ -234,29 +242,38 @@ def extract_entities(labels: list, transcript: list, batch_size: int = 100) -> l
         return None # Return None on critical failure
 
 @cached_file_object('.entities')
-def extract_nouns(video_path: str, transcript: str) -> list:
+def extract_nouns(
+    video_path: str,
+    transcript: str,
+    config: Optional[EntityConfig] = None,
+    llm_config: Optional[LLMConfig] = None,
+) -> list:
     """
     Extracts proper nouns and technical terms from a transcript.
-    
+
     This function performs entity extraction using GLiNER and processes
     the results to group and merge entities.
-    
+
     Args:
         video_path (str): Path to the video file (used for caching).
         transcript (str): The transcript to extract entities from.
-        
+        config: EntityConfig instance. If None, uses defaults.
+        llm_config: LLMConfig instance. If None, uses defaults.
+
     Returns:
         list: Extracted entities grouped by type.
     """
+    if config is None:
+        config = EntityConfig()
     labels = ["Person", "Organizations", "Date", "Positions", "Locations"]
     print('Extract Entities')
-    entities =  extract_entities(labels, transcript)
+    entities = extract_entities(labels, transcript, config=config)
     print('Group Entities')
     entities_by_label = group_by_label(entities)
     print('Merge Entities')
     entities_merged = merge_duplicate_texts(entities_by_label)
     print('Reduce Entities')
-    entities_cannonical = merge_similar_texts(entities_merged)
+    entities_cannonical = merge_similar_texts(entities_merged, config=config, llm_config=llm_config)
     return entities_cannonical
 
 def extract_persons(introductions: str) -> list:

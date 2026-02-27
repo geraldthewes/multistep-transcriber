@@ -1,7 +1,8 @@
 import spacy
-from typing import List, Dict
+from typing import List, Dict, Optional
 
 from .caching import cached_file, cached_file_object
+from ..config import MergeSentencesConfig
 
 """
 Module for merging transcript segments into full sentences.
@@ -115,7 +116,11 @@ def _map_sentences_to_segments(
 
 
 @cached_file_object('.sentence_merge')
-def merge_transcript_segments(video_path:str, segments: List[Dict[str, any]]) -> List[Dict[str, any]]:
+def merge_transcript_segments(
+    video_path: str,
+    segments: List[Dict[str, any]],
+    config: Optional[MergeSentencesConfig] = None,
+) -> List[Dict[str, any]]:
     """
     Merge transcript segments into full sentences using spaCy for sentence tokenization.
 
@@ -134,8 +139,11 @@ def merge_transcript_segments(video_path:str, segments: List[Dict[str, any]]) ->
     if not segments:
         return []
 
+    if config is None:
+        config = MergeSentencesConfig()
+
     # Load spaCy model and add sentencizer
-    nlp = spacy.load("en_core_web_sm")
+    nlp = spacy.load(config.spacy_model)
     if "sentencizer" not in nlp.pipe_names:
         nlp.add_pipe("sentencizer")
 
