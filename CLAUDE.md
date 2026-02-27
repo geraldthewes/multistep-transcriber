@@ -99,6 +99,11 @@ make stop      # Stop the devcontainer
 make delete    # Delete the devcontainer
 ```
 
+> **Important:** The devcontainer does **not** auto-sync local file changes. To pick up code changes, commit and push to git, then run `git pull` inside the devcontainer before running tests:
+> ```bash
+> devpod ssh multistep-transcriber --command "git -C /workspaces/multistep-transcriber pull"
+> ```
+
 ### Environment Variables
 
 The devcontainer automatically sets:
