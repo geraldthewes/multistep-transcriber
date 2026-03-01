@@ -24,8 +24,8 @@ This packages currently only handles wav files, so if you have a video, you must
 
 ### Dependencies
 
-This package depends on an external ollama server with some models, and will download some models from Hugging Face. The system is expected to have a GPU for better performance.
-Install ollama follwoing documentation on the [olama web site](https://ollama.com/)
+This package depends on an external openAi or ollama server with some models, and will download some models from Hugging Face. The system is expected to have a GPU for better performance.
+
 
 **Hugging Face Token Required**: You need a Hugging Face token with read access to download the models. Set the `HF_TOKEN` environment variable:
 ```bash
@@ -35,18 +35,18 @@ export OLLAMA_HOST=<host:11434>
 
 ## Installation
 
-### Install package
+This library is designed to run on a system with a GPU. If you are on a laptop we recommend you devlop using
+a devcontainer running on a sever with a GPU.
 
-We recommend you install in a Conda environemnts
-```
-./setup.sh
-```
-
-### Serve documentation
+### Devcontainer
 
 ```
- mkdocs serve -a 0.0.0.0:8000
+devpod up github.com/geraldthewes/multistep-transcriber --provider nomad --ide none 
 ```
+
+Note: this package contains a .devpod/nomad.yml file containing the necessary options.
+Secrets are stored in vault.
+
 
 ## Usage
 
@@ -61,12 +61,3 @@ python -m unittest test_transcriber.py
 python -m unittest mst/steps/tests/test_helpers.py
 ```
 
-## Devcontainer
-
-```
-devpod up github.com/geraldthewes/multistep-transcriber --provider nomad \
-    --ide none \
-    --provider-option NOMAD_CPU=2000 \
-    --provider-option NOMAD_MEMORYMB=8192 \
-    --provider-option NOMAD_DISKMB=512 
-```

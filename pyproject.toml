@@ -41,13 +41,6 @@ dependencies = [
     "topic-treeseg @ git+https://github.com/geraldthewes/topic-treeseg.git"
 ]
 
-[project.optional-dependencies]
-docs = [
-    "mkdocs>=1.5.0",
-    "mkdocs-material>=9.0.0",
-    "mkdocstrings[python]>=0.24.0",
-]
-
 [project.urls]
 Homepage = "https://github.com/geraldthewes/multistep-transcriber" 
 Repository = "https://github.com/geraldthewes/multistep-transcriber"

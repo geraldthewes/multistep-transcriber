@@ -1,4 +1,4 @@
-.PHONY: docs docs-serve docs-api test publish clean devcontainer stop delete
+.PHONY: docs test publish clean devcontainer stop delete
 
 DEVCONTAINER_NAME ?= multistep-transcriber
 DEVCONTAINER_SRC ?= github.com/geraldthewes/multistep-transcriber
@@ -9,7 +9,7 @@ REMOTE_EXEC = devpod ssh $(DEVCONTAINER_NAME) --command "cd $(WORKSPACE_DIR) && 
 
 # Generate API documentation using lazydocs
 # Requires: conda activate mst (or environment with all dependencies)
-docs-api:
+docs:
 	conda run -n mst lazydocs --output-path=./documentation/api \
 		--src-base-url="https://github.com/geraldthewes/multistep-transcriber/blob/main/" \
 		--overview-file="README.md" \
@@ -33,12 +33,6 @@ docs-api:
 		mst.steps.standardize \
 		mst.steps.topic_segmentation \
 		mst.steps.transcription
-
-docs: docs-api
-	mkdocs build
-
-docs-serve:
-	mkdocs serve -a 0.0.0.0:8000
 
 test:
 	$(REMOTE_EXEC) ./test.sh"

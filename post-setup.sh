@@ -1,4 +1,5 @@
 #!/bin/sh
+# Setup to run after devcontainer is up and running
 
 # Source secrets for this session (postCreateCommand)
 if [ -f ".vault-secrets" ]; then

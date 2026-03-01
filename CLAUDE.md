@@ -1,37 +1,14 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
-
 ## Project Overview
 
 This is a Python package called `multistep-transcriber` that implements an automated, multi-step workflow for generating high-quality video/audio transcripts. The project uses a combination of LLMs and specialized AI models to process audio through several stages: initial transcription, sentence merging, entity extraction, transcript correction, speaker diarization, topic segmentation, and final formatting.
 
-The workflow is inspired by [this Reddit post](https://www.reddit.com/r/LocalLLaMA/comments/1g2vhy3/creating_very_highquality_transcripts_with/) and is designed to produce superior transcripts compared to single-pass approaches.
-
-## Key Dependencies
-
-- **ollama**: Required external server for LLM operations
-- **faster-whisper**: Speech-to-text transcription
-- **pyannote.audio**: Speaker diarization
-- **topic-treeseg**: Topic segmentation (custom dependency)
-- **transformers**, **sentence_transformers**: NLP models
-- **gliner**, **setfit**: Entity recognition and classification
-- **spacy**: Sentence processing
-- **torch**: Deep learning framework
-
 ## Common Commands
 
 ### Installation
-```bash
-# Install PyTorch with CUDA support
-pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu126
 
-# Install topic-treeseg dependency
-pip install https://github.com/geraldthewes/topic-treeseg 
-
-# Install the package
-pip install .
-```
+The installation to setup the environment after the devcontainer is setup is captured in post-setup.sh
 
 ### Testing
 
@@ -60,10 +37,12 @@ make publish
 
 ### Documentation
 
+API documentation is generated using lazydocs:
+
 ```bash
-# Serve documentation locally
-mkdocs serve -a 0.0.0.0:8000
+make docs
 ```
+
 
 ### Build Targets
 
@@ -72,9 +51,7 @@ mkdocs serve -a 0.0.0.0:8000
 | `make test` | Run all unit tests and build the wheel (inside devcontainer) |
 | `make publish` | Run tests, build wheel, upload to private PyPI (inside devcontainer) |
 | `make clean` | Remove `dist/`, `build/`, `*.egg-info/` (inside devcontainer) |
-| `make docs` | Generate API docs and build MkDocs site |
-| `make docs-serve` | Serve documentation locally on port 8000 |
-| `make docs-api` | Generate API documentation with lazydocs |
+| `make docs` | Generate API documentation with lazydocs |
 | `make devcontainer` | Launch the DevPod devcontainer (Nomad provider) |
 | `make stop` | Stop the devcontainer |
 | `make delete` | Delete the devcontainer |
@@ -175,14 +152,14 @@ Per `documentation/CONVENTIONS.md`:
 
 ## External Requirements
 
-- **Ollama server**: Must be running with appropriate models for LLM operations
+- **Ollama server/OpenAI server**: Must be running with appropriate models for LLM operations
 - **GPU**: Recommended for better performance with audio processing models
 - **WAV files**: Currently only supports WAV audio format (video files need audio extraction)
 
 ## File Structure Notes
 
 - Package code is in `mst/` directory
-- Documentation uses MkDocs with Material theme
+- API documentation is generated with lazydocs into `documentation/api/`
 - Tests are minimal (only in `test_transcriber.py` and `mst/steps/tests/`)
 - Jupyter notebooks (`.ipynb` files) are used for experimentation
 - `introductions.json` contains speaker mapping data
