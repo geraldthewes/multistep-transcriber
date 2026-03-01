@@ -91,21 +91,3 @@ max_topics sets the maximum topics you want the topic segmenter to create. The l
 Read the reference [API](api/README.md)
 
 
-## Appendix - Obsolete sections
-
-The code below is old and will probably be removed.
-
-### Sentence merging
-
-```
-python -m spacy download en_core_web_sm
-python merge_transcript_segments.py   /mnt/data3/AI/data/Needham/2024-10-24.d/cache.raw_transcript /mnt/data3/AI/data/Needham/2024-10-24.d/cache.sentence_merge
-```
-
-
-### Topic segmentation
-
-```
-python  topic_segment.py --transcript-file   /mnt/data3/AI/data/Needham/2024-10-24.d/cache.final --output-file=/mnt/data3/AI/data/Needham/2024-10-24.d/cache.topics --segments=512
-```
-

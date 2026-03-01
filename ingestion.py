@@ -1,8 +1,5 @@
 import os
 import sys
-import json
-import torch
-import logging
 import argparse
 
 from mst import VideoTranscriber
@@ -46,9 +43,11 @@ def main():
     transcriber = VideoTranscriber(config)
     print(f'Transcribe {video_path}')
     result, nouns_list = transcriber.transcribe_video(video_path)
+    headlines = []
+    summary = []
     if args.max_topics:
-        print(f'Break into topics {video_path}')    
-        result, headlines, summary = transcriber.topics(video_path, result, args.max_topics)    
+        print(f'Break into topics {video_path}')
+        result, headlines, summary = transcriber.topics(video_path, result, args.max_topics)
     transcriber.format_transcript(video_path, result, nouns_list, headlines, summary)
 
 

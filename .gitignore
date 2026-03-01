@@ -4,3 +4,11 @@ dist/
 build/
 *.egg-info/
 __pycache__/
+*.d/
+*~
+*.orig
+*.swp
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.ipynb_checkpoints/

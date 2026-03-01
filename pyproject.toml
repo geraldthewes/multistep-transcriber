@@ -45,12 +45,11 @@ dependencies = [
 Homepage = "https://github.com/geraldthewes/multistep-transcriber" 
 Repository = "https://github.com/geraldthewes/multistep-transcriber"
 
-# Optional: To make scripts like ingestion.py and topic_segment.py installable as command-line tools,
-# they would typically need to be moved into the 'mst' package (e.g., in an mst/cli/ subdirectory)
-# and their imports updated. If you do that, you can uncomment and adapt the following:
+# Optional: To make scripts like ingestion.py installable as a command-line tool,
+# it would typically need to be moved into the 'mst' package (e.g., in an mst/cli/ subdirectory)
+# and its imports updated. If you do that, you can uncomment and adapt the following:
 # [project.scripts]
 # mst-ingest = "mst.cli.ingestion:main"
-# mst-segment-topics = "mst.cli.topic_segment:main"
 
 [tool.setuptools.packages.find]
 where = ["."]  # Look for packages in the current directory (project root)

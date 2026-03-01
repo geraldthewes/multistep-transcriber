@@ -108,7 +108,7 @@ def download_and_convert(url, output_dir="."):
                              acodec='pcm_s16le')  # WAV format
         ffmpeg.run(stream)
 
-        print(f"Conversion complete! Files saved:")
+        print("Conversion complete! Files saved:")
         if json_filename and os.path.exists(json_filename):
             print(f" - Metadata: {json_filename}")
         if video_file and os.path.exists(video_file):

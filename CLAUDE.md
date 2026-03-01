@@ -120,9 +120,7 @@ Additional secrets (e.g., `TWINE_USERNAME`, `TWINE_PASSWORD`) can be placed in `
 
 Located in the project root, these provide standalone functionality:
 - **ingestion.py**: Batch processing pipeline
-- **topic_segment.py**: Standalone topic segmentation
 - **yt-download.py** / **yt-transcript.py**: YouTube content processing utilities
-- **merge_transcript_segments.py**: Standalone sentence merging
 
 ### Data Flow
 
@@ -162,4 +160,3 @@ Per `documentation/CONVENTIONS.md`:
 - API documentation is generated with lazydocs into `documentation/api/`
 - Tests are minimal (only in `test_transcriber.py` and `mst/steps/tests/`)
 - Jupyter notebooks (`.ipynb` files) are used for experimentation
-- `introductions.json` contains speaker mapping data
