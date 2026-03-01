@@ -49,41 +49,27 @@ nav:
   - Home: index.md
   - Algorithm: Planning.md
   - API Reference:
-    - 'mst Package': api/mst.md
-    - 'VideoTranscriber': api/video_transcriber.md
-    - 'Core Steps':
-      - 'Caching': api/steps/caching.md
-      - 'Diarization': api/steps/diarization.md
-      - 'Entities': api/steps/entities.md
-      - 'Formatting': api/steps/format.md
-      - 'Helpers': api/steps/helpers.md
-      - 'Introductions': api/steps/introductions.md
-      - 'Merge Sentences': api/steps/merge_sentences.md
-      - 'Models': api/steps/models.md
-      - 'Standardize': api/steps/standardize.md
-      - 'Topic Segmentation': api/steps/topic_segmentation.md
-      - 'Transcription': api/steps/transcription.md
+    - Overview: api/README.md
+    - VideoTranscriber: api/mst.VideoTranscriber.md
+    - Configuration: api/config.md
+    - Core Steps:
+      - Caching: api/mst.steps.caching.md
+      - Diarization: api/mst.steps.diarization.md
+      - Entities: api/mst.steps.entities.md
+      - Formatting: api/mst.steps.format.md
+      - Helpers: api/mst.steps.helpers.md
+      - Introductions: api/mst.steps.introductions.md
+      - LLM Client: api/mst.steps.llm_client.md
+      - Merge Sentences: api/mst.steps.merge_sentences.md
+      - Models: api/mst.steps.models.md
+      - Standardize: api/mst.steps.standardize.md
+      - Topic Segmentation: api/mst.steps.topic_segmentation.md
+      - Transcription: api/mst.steps.transcription.md
+  - Conventions: CONVENTIONS.md
+  - Todo: todo.md
 
 plugins:
   - search
-  - mkdocstrings:
-      default_handler: python
-      handlers:
-        python:
-          options:
-            docstring_style: google # Matches the style used in VideoTranscriber
-            show_root_heading: true # Use the heading from the identifier itself
-            show_source: true       # Show/hide source code blocks
-            members_order: source   # Order of members as in source code
-            separate_signature: true # Render signature separately from docstring
-            merge_init_into_class: true # Merge __init__ docstring into class docstring
-            # show_signature_annotations: true # Show type hints in signatures
-            # show_if_no_docstring: true # Show members even if they have no docstring
-            # heading_level: 2 # Default heading level for mkdocstrings content
-          import:
-            - url: https://docs.python.org/3/objects.inv
-            # If you use Pydantic or other libraries with intersphinx inventories, add them here:
-            # - url: https://pydantic-docs.helpmanual.io/objects.inv
 
 extra:
   social:

@@ -88,7 +88,7 @@ max_topics sets the maximum topics you want the topic segmenter to create. The l
 
 ## Reference API
 
-Read the reference [API](api/mst.md)
+Read the reference [API](api/README.md)
 
 
 ## Appendix - Obsolete sections

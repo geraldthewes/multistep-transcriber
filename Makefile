@@ -10,17 +10,29 @@ REMOTE_EXEC = devpod ssh $(DEVCONTAINER_NAME) --command "cd $(WORKSPACE_DIR) && 
 # Generate API documentation using lazydocs
 # Requires: conda activate mst (or environment with all dependencies)
 docs-api:
-	lazydocs --output-path=./docs/api \
+	conda run -n mst lazydocs --output-path=./documentation/api \
 		--src-base-url="https://github.com/geraldthewes/multistep-transcriber/blob/main/" \
 		--overview-file="README.md" \
 		--no-watermark \
 		--toc \
 		mst || true
-	lazydocs --output-path=./docs/api \
+	conda run -n mst lazydocs --output-path=./documentation/api \
 		--src-base-url="https://github.com/geraldthewes/multistep-transcriber/blob/main/" \
 		--no-watermark \
 		--toc \
-		mst.VideoTranscriber
+		mst.VideoTranscriber \
+		mst.steps.caching \
+		mst.steps.diarization \
+		mst.steps.entities \
+		mst.steps.format \
+		mst.steps.helpers \
+		mst.steps.introductions \
+		mst.steps.llm_client \
+		mst.steps.merge_sentences \
+		mst.steps.models \
+		mst.steps.standardize \
+		mst.steps.topic_segmentation \
+		mst.steps.transcription
 
 docs: docs-api
 	mkdocs build
