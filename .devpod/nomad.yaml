@@ -8,6 +8,7 @@ nomad_gpu_compute_capability: "7.0"
 vault_addr: "http://vault.service.consul:8200"
 vault_policies:
   - "transcription-policy"
+  - "pypiserver-policy"
 vault_secrets:
   - path: "secret/data/hf/transcription"
     fields:
